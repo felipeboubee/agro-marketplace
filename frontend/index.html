@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>AgroMarket - Mercado Agroganadero Digital</title>
+
+    <meta name="theme-color" content="#2e7d32" />
+    <meta
+      name="description"
+      content="AgroMarket - Mercado Agroganadero Digital. Conectamos productores y compradores de hacienda."
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="AgroMarket" />
+    <meta
+      property="og:description"
+      content="Plataforma especializada en la comercialización de ganado."
+    />
+    <meta property="og:image" content="/og-image.jpg" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <!-- Favicon -->
+    <link rel="icon" href="/favicon.ico" />
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", system-ui, sans-serif;
+        background: #f5f7f5;
+      }
+
+      #loading-screen {
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(135deg, #2e7d32, #1b5e20);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        z-index: 9999;
+      }
+
+      .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-top: 16px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="loading-screen">
+      <h1>AgroMarket</h1>
+      <div class="spinner"></div>
+    </div>
+
+    <div id="root"></div>
+
+    <script type="module" src="/src/index.jsx"></script>
+
+    <script>
+      const observer = new MutationObserver(() => {
+        const root = document.getElementById("root");
+        if (root.children.length > 0) {
+          document.getElementById("loading-screen").remove();
+          observer.disconnect();
+        }
+      });
+
+      observer.observe(document.getElementById("root"), { childList: true });
+    </script>
+  </body>
+</html>
