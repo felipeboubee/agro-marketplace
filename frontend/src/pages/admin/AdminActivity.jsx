@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "../../services/api";
 import { 
   Activity, 
@@ -33,14 +33,12 @@ export default function AdminActivity() {
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadActivities();
-  }, [filters]);
-
-  async function loadActivities() {
+  const loadActivities = useCallback(async () => {
     try {
       setLoading(true);
+      console.log("Fetching activities with filters:", filters);
       const data = await api.getDetailedActivity(filters);
+      console.log("Activities data received:", data);
       setActivities(data.activities);
       setPagination(data.pagination);
       setActivityTypes(data.filters?.activityTypes || []);
@@ -50,7 +48,11 @@ export default function AdminActivity() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [filters]);
+
+  useEffect(() => {
+    loadActivities();
+  }, [loadActivities]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value, page: 1 }));

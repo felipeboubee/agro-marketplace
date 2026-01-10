@@ -248,40 +248,51 @@ exports.getDetailedActivity = async (req, res) => {
     let activities = [];
     let total = 0;
     let activityTypes = [];
+    let hasUserActivity = false;
 
     try {
-      // Contar total
+      // Verificar si la tabla user_activity existe y tiene datos
       const countResult = await pool.query('SELECT COUNT(*) as total FROM user_activity');
       total = parseInt(countResult.rows[0]?.total || 0);
-
-      // Obtener datos
-      const result = await pool.query(`
-        SELECT 
-          ua.*,
-          u.name as user_name,
-          u.email as user_email
-        FROM user_activity ua
-        LEFT JOIN users u ON u.id = ua.user_id
-        ORDER BY ua.created_at DESC
-        LIMIT $1 OFFSET $2
-      `, [limit, offset]);
       
-      activities = result.rows;
+      if (total > 0) {
+        hasUserActivity = true;
+        
+        // Obtener datos
+        const result = await pool.query(`
+          SELECT 
+            ua.*,
+            u.name as user_name,
+            u.email as user_email
+          FROM user_activity ua
+          LEFT JOIN users u ON u.id = ua.user_id
+          ORDER BY ua.created_at DESC
+          LIMIT $1 OFFSET $2
+        `, [limit, offset]);
+        
+        activities = result.rows;
 
-      // Obtener tipos de actividad
-      const typesResult = await pool.query(`
-        SELECT DISTINCT activity_type 
-        FROM user_activity 
-        ORDER BY activity_type
-      `);
-      activityTypes = typesResult.rows.map(row => row.activity_type);
+        // Obtener tipos de actividad
+        const typesResult = await pool.query(`
+          SELECT DISTINCT activity_type 
+          FROM user_activity 
+          ORDER BY activity_type
+        `);
+        activityTypes = typesResult.rows.map(row => row.activity_type);
+      }
     } catch (error) {
-      console.log('Tabla user_activity no disponible, usando datos de usuarios:', error.message);
+      console.log('Error consultando user_activity, ignorando:', error.message);
+    }
+
+    // Si no hay actividades en user_activity, usar usuarios como actividad
+    if (!hasUserActivity || activities.length === 0) {
+      console.log('Usando datos de usuarios como actividad...');
       
-      // Usar usuarios como actividad
-      const countResult = await pool.query('SELECT COUNT(*) as total FROM users');
-      total = parseInt(countResult.rows[0]?.total || 0);
+      // Contar total de usuarios
+      const userCountResult = await pool.query('SELECT COUNT(*) as total FROM users');
+      total = parseInt(userCountResult.rows[0]?.total || 0);
       
+      // Obtener usuarios
       const usersResult = await pool.query(`
         SELECT 
           id,
@@ -289,19 +300,18 @@ exports.getDetailedActivity = async (req, res) => {
           email as user_email,
           created_at,
           'user_registration' as activity_type,
-          'Usuario registrado en el sistema' as description
+          'Usuario registrado en el sistema' as description,
+          NULL as ip_address,
+          id as user_id
         FROM users
         ORDER BY created_at DESC
         LIMIT $1 OFFSET $2
       `, [limit, offset]);
       
-      activities = usersResult.rows.map(user => ({
-        ...user,
-        id: user.id,
-        user_id: user.id
-      }));
-      
+      activities = usersResult.rows;
       activityTypes = ['user_registration'];
+      
+      console.log(`Actividades cargadas: ${activities.length} registros, Total: ${total}`);
     }
 
     res.json({
