@@ -6,7 +6,9 @@ import '../../styles/forms.css';
 const CreateLote = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    location: '',
+    estancia_name: '',
+    localidad: '',
+    provincia: '',
     animal_type: 'novillitos',
     male_count: 0,
     female_count: 0,
@@ -93,7 +95,9 @@ const CreateLote = () => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.location) newErrors.location = 'La ubicación es requerida';
+    if (!formData.estancia_name) newErrors.estancia_name = 'El nombre de la estancia es requerido';
+    if (!formData.localidad) newErrors.localidad = 'La localidad es requerida';
+    if (!formData.provincia) newErrors.provincia = 'La provincia es requerida';
     if (!formData.animal_type) newErrors.animal_type = 'El tipo de animal es requerido';
     if (formData.total_count <= 0) newErrors.total_count = 'La cantidad total debe ser mayor a 0';
     if (!formData.average_weight || formData.average_weight <= 0) newErrors.average_weight = 'El peso promedio es requerido';
@@ -174,19 +178,59 @@ const CreateLote = () => {
           <h3 className="section-title">Información Básica</h3>
           <div className="form-grid">
             <div className="form-group">
-              <label htmlFor="location">
-                Ubicación del Lote *
-                {errors.location && <span className="error-text"> {errors.location}</span>}
+              <label htmlFor="estancia_name">
+                Nombre de la Estancia *
+                {errors.estancia_name && <span className="error-text"> {errors.estancia_name}</span>}
               </label>
               <input
                 type="text"
-                id="location"
-                name="location"
-                value={formData.location}
+                id="estancia_name"
+                name="estancia_name"
+                value={formData.estancia_name}
                 onChange={handleChange}
-                placeholder="Ej: Estancia La Esperanza, Córdoba"
-                className={errors.location ? 'error' : ''}
+                placeholder="Ej: La Esperanza"
+                className={errors.estancia_name ? 'error' : ''}
               />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="localidad">
+                Localidad *
+                {errors.localidad && <span className="error-text"> {errors.localidad}</span>}
+              </label>
+              <input
+                type="text"
+                id="localidad"
+                name="localidad"
+                value={formData.localidad}
+                onChange={handleChange}
+                placeholder="Ej: Córdoba Capital"
+                className={errors.localidad ? 'error' : ''}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="provincia">
+                Provincia *
+                {errors.provincia && <span className="error-text"> {errors.provincia}</span>}
+              </label>
+              <select
+                id="provincia"
+                name="provincia"
+                value={formData.provincia}
+                onChange={handleChange}
+                className={errors.provincia ? 'error' : ''}
+              >
+                <option value="">Seleccionar provincia</option>
+                <option value="Buenos Aires">Buenos Aires</option>
+                <option value="Córdoba">Córdoba</option>
+                <option value="Entre Ríos">Entre Ríos</option>
+                <option value="La Pampa">La Pampa</option>
+                <option value="Misiones">Misiones</option>
+                <option value="Corrientes">Corrientes</option>
+                <option value="Santa Fe">Santa Fe</option>
+                <option value="Santiago del Estero">Santiago del Estero</option>
+              </select>
             </div>
 
             <div className="form-group">

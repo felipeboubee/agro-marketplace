@@ -29,10 +29,12 @@ export default function AdminDashboard() {
         api.getDashboardActivity()
       ]);
       
+      console.log('Dashboard data loaded:', { statsData, activityData });
       setStats(statsData.summary);
-      setRecentActivity(activityData || []);
+      setRecentActivity(Array.isArray(activityData) ? activityData : []);
     } catch (error) {
       console.error("Error loading dashboard:", error);
+      setRecentActivity([]);
     } finally {
       setLoading(false);
     }
