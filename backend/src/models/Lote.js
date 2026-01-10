@@ -4,7 +4,9 @@ const Lote = {
   async create(loteData) {
     const {
       seller_id,
-      location,
+      estancia_name,
+      localidad,
+      provincia,
       animal_type,
       male_count,
       female_count,
@@ -18,20 +20,25 @@ const Lote = {
       description
     } = loteData;
 
+    // Mapear campos del frontend a base de datos
+    const location = estancia_name ? `${estancia_name}, ${localidad}` : '';
+    const city = localidad || '';
+    const province = provincia || '';
+
     const query = `
       INSERT INTO lotes (
-        seller_id, location, animal_type, male_count, female_count,
+        seller_id, location, city, province, animal_type, male_count, female_count,
         total_count, average_weight, breed, base_price, feeding_type,
-        video_url, photos, description, created_at
+        video_url, photos, description, status, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW())
       RETURNING *
     `;
     
     const values = [
-      seller_id, location, animal_type, male_count, female_count,
+      seller_id, location, city, province, animal_type, male_count, female_count,
       total_count, average_weight, breed, base_price, feeding_type,
-      video_url, photos, description
+      video_url, photos ? JSON.stringify(photos) : null, description, 'ofertado'
     ];
     
     const { rows } = await pool.query(query, values);

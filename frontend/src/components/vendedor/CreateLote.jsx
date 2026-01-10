@@ -133,7 +133,7 @@ const CreateLote = () => {
         }
       });
 
-      const response = await api.post('/lotes/create', formDataToSend, {
+      const response = await api.post('/lotes', formDataToSend, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
