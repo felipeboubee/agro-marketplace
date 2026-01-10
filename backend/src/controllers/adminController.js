@@ -104,8 +104,8 @@ exports.getActivity = async (req, res) => {
       
       activities = result.rows;
     } catch (error) {
-      // Si la tabla no existe, crear actividad básica desde usuarios
-      console.log('Tabla user_activity no encontrada, generando datos básicos:', error.message);
+      // Si la tabla no existe o hay error, usar usuarios como actividad
+      console.log('Usando usuarios como actividad:', error.message);
       
       const usersResult = await pool.query(`
         SELECT 
@@ -121,11 +121,15 @@ exports.getActivity = async (req, res) => {
       `, [limit]);
       
       activities = usersResult.rows.map(user => ({
-        ...user,
         id: user.id,
         user_id: user.id,
-        activity_type: 'user_registration',
-        description: 'Usuario registrado en el sistema'
+        user_name: user.user_name,
+        user_email: user.user_email,
+        activity_type: user.activity_type,
+        description: user.description,
+        created_at: user.created_at,
+        ip_address: null,
+        user_agent: null
       }));
     }
 

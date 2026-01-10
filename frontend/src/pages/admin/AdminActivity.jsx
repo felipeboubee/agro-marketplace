@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../../services/api";
 import { 
   Activity, 
@@ -29,9 +29,11 @@ export default function AdminActivity() {
     start_date: "",
     end_date: ""
   });
+  const [userIdInput, setUserIdInput] = useState(""); // Local state para el input
   const [activityTypes, setActivityTypes] = useState([]);
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(true);
+  const debounceTimerRef = useRef(null);
 
   const loadActivities = useCallback(async () => {
     try {
@@ -55,7 +57,21 @@ export default function AdminActivity() {
   }, [loadActivities]);
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
+    // Para cambios inmediatos (selects y dates)
+    if (key === 'activity_type' || key === 'start_date' || key === 'end_date' || key === 'page') {
+      setFilters(prev => ({ ...prev, [key]: value, page: key === 'page' ? value : 1 }));
+    } else if (key === 'user_id') {
+      // Actualizar el input local inmediatamente
+      setUserIdInput(value);
+      
+      // Para entrada de texto, usar debounce
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        setFilters(prev => ({ ...prev, user_id: value, page: 1 }));
+      }, 500);
+    }
   };
 
   const handlePageChange = (newPage) => {
@@ -71,6 +87,7 @@ export default function AdminActivity() {
       start_date: "",
       end_date: ""
     });
+    setUserIdInput("");
   };
 
   const getActivityIcon = (type) => {
@@ -180,7 +197,7 @@ export default function AdminActivity() {
             <input 
               type="text"
               placeholder="Buscar por ID de usuario"
-              value={filters.user_id}
+              value={userIdInput}
               onChange={(e) => handleFilterChange('user_id', e.target.value)}
               className="input"
             />

@@ -1,171 +1,160 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { api } from "../../services/api";
+import React, { useState } from 'react';
+import { Routes, Route, Link, useNavigate } from 'react-router-dom';
+import LoteList from '../comprador/LoteList';
+import CertificationForm from '../comprador/CertificationForm';
+import { ShoppingCart, Plus, FileText, List } from 'lucide-react';
 import '../../styles/dashboard.css';
 
 const BuyerDashboard = () => {
-  const [user, setUser] = useState(null);
-  const [marketPrices, setMarketPrices] = useState([]);
-  const [recentLotes, setRecentLotes] = useState([]);
-  const [savedLotes, setSavedLotes] = useState([]);
-  const [pendingTransactions, setPendingTransactions] = useState([]);
-  const [certificationStatus, setCertificationStatus] = useState('no certificado');
+  const [user] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
+  const [stats] = useState({
+    totalPurchases: 0,
+    activePurchases: 0,
+    completedTransactions: 0,
+    totalSpent: 0,
+    certificationStatus: 'no_certified'
+  });
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    // Obtener datos del usuario
-    const fetchUserData = async () => {
-      const token = localStorage.getItem('token');
-      try {
-        const response = await api.get('/users/profile', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setUser(response.data.user);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    };
-
-    // Obtener precios del mercado
-    const fetchMarketPrices = async () => {
-      try {
-        // En un caso real, aquí consumirías la API de Liniers
-        const mockPrices = [
-          { category: 'Novillitos', min: 4850, max: 5200, trend: 'up', change: 2.3 },
-          { category: 'Vaquillonas', min: 4500, max: 4800, trend: 'down', change: 1.5 },
-          { category: 'Vacas', min: 4200, max: 4500, trend: 'up', change: 0.8 },
-        ];
-        setMarketPrices(mockPrices);
-      } catch (error) {
-        console.error('Error fetching market prices:', error);
-      }
-    };
-
-    fetchUserData();
-    fetchMarketPrices();
-  }, []);
+  const navigateTo = (path) => {
+    navigate(path);
+  };
 
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
-        <h1>Bienvenido, {user?.name}</h1>
-        <p>Panel de Control - Comprador</p>
-      </div>
+    <div className="admin-layout">
+      <aside className="admin-sidebar">
+        <div className="sidebar-header">
+          <h2>Comprador</h2>
+        </div>
+        
+        <nav className="sidebar-nav">
+          <ul>
+            <li>
+              <button 
+                className="nav-item active"
+                onClick={() => navigateTo('/comprador')}
+              >
+                <ShoppingCart size={20} />
+                <span>Dashboard</span>
+              </button>
+            </li>
+            <li>
+              <button 
+                className="nav-item"
+                onClick={() => navigateTo('/comprador/lotes')}
+              >
+                <List size={20} />
+                <span>Explorar Lotes</span>
+              </button>
+            </li>
+            <li>
+              <button 
+                className="nav-item"
+                onClick={() => navigateTo('/comprador/certificacion')}
+              >
+                <FileText size={20} />
+                <span>Certificación</span>
+              </button>
+            </li>
+          </ul>
+        </nav>
 
-      <div className="dashboard-grid">
-        {/* Precios del Mercado */}
-        <div className="dashboard-card">
-          <div className="card-header">
-            <h3>Precios del Mercado de Liniers</h3>
-            <span className="card-updated">Actualizado hoy</span>
+        <div className="sidebar-footer">
+          <button 
+            onClick={() => {
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              navigate('/login');
+            }}
+            className="logout-btn"
+          >
+            Cerrar Sesión
+          </button>
+        </div>
+      </aside>
+
+      <main className="admin-main">
+        <div className="admin-content">
+          <div className="page-header">
+            <h1>
+              <ShoppingCart size={32} />
+              Panel del Comprador
+            </h1>
+            <p style={{color: '#6b7280', marginTop: '4px'}}>Bienvenido, {user?.name}</p>
           </div>
-          <div className="prices-list">
-            {marketPrices.map((price, index) => (
-              <div key={index} className="price-item">
-                <div className="price-category">{price.category}</div>
-                <div className="price-range">
-                  ${price.min} - ${price.max}
-                </div>
-                <div className={`price-trend ${price.trend}`}>
-                  {price.trend === 'up' ? '↑' : '↓'} {price.change}%
-                </div>
+
+          {/* Stats Cards */}
+          <div className="stats-grid">
+            <div className="stat-card stat-blue">
+              <div className="stat-header">
+                <ShoppingCart size={24} />
+                <span className="stat-title">Compras Totales</span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Estado de Certificación */}
-        <div className="dashboard-card">
-          <div className="card-header">
-            <h3>Estado de Certificación</h3>
-          </div>
-          <div className={`certification-status ${certificationStatus.replace(' ', '-')}`}>
-            <div className="status-icon">
-              {certificationStatus === 'aprobado' && '✓'}
-              {certificationStatus === 'pendiente' && '⏳'}
-              {certificationStatus === 'no certificado' && 'ℹ️'}
+              <div className="stat-content">
+                <h3 className="stat-value">{stats.totalPurchases}</h3>
+              </div>
             </div>
-            <div className="status-content">
-              <h4>{certificationStatus.toUpperCase()}</h4>
-              {certificationStatus === 'no certificado' && (
-                <Link to="/comprador/certificacion" className="btn btn-small btn-primary">
-                  Solicitar Certificación
-                </Link>
-              )}
+
+            <div className="stat-card stat-green">
+              <div className="stat-header">
+                <FileText size={24} />
+                <span className="stat-title">En Proceso</span>
+              </div>
+              <div className="stat-content">
+                <h3 className="stat-value">{stats.activePurchases}</h3>
+              </div>
+            </div>
+
+            <div className="stat-card stat-purple">
+              <div className="stat-header">
+                <ShoppingCart size={24} />
+                <span className="stat-title">Completadas</span>
+              </div>
+              <div className="stat-content">
+                <h3 className="stat-value">{stats.completedTransactions}</h3>
+              </div>
+            </div>
+
+            <div className="stat-card stat-orange">
+              <div className="stat-header">
+                <Plus size={24} />
+                <span className="stat-title">Invertido</span>
+              </div>
+              <div className="stat-content">
+                <h3 className="stat-value">${stats.totalSpent.toLocaleString()}</h3>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Lotes Guardados */}
-        <div className="dashboard-card">
-          <div className="card-header">
-            <h3>Lotes Guardados</h3>
-            <Link to="/comprador/lotes-guardados">Ver todos</Link>
-          </div>
-          {savedLotes.length > 0 ? (
-            <div className="lotes-list">
-              {savedLotes.slice(0, 3).map((lote) => (
-                <div key={lote.id} className="lote-item">
-                  <div className="lote-info">
-                    <h4>{lote.animal_type}</h4>
-                    <p>{lote.location} - {lote.total_count} animales</p>
-                  </div>
-                  <div className="lote-price">${lote.base_price}/kg</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="empty-state">No hay lotes guardados</p>
-          )}
+          <Routes>
+            <Route path="/" element={<BuyerDashboardHome />} />
+            <Route path="/lotes" element={<LoteList />} />
+            <Route path="/certificacion" element={<CertificationForm />} />
+          </Routes>
         </div>
-
-        {/* Transacciones en Curso */}
-        <div className="dashboard-card">
-          <div className="card-header">
-            <h3>Transacciones en Curso</h3>
-            <Link to="/comprador/historial">Ver historial</Link>
-          </div>
-          {pendingTransactions.length > 0 ? (
-            <div className="transactions-list">
-              {pendingTransactions.map((transaction) => (
-                <div key={transaction.id} className="transaction-item">
-                  <div className="transaction-info">
-                    <h4>Lote #{transaction.lote_id}</h4>
-                    <p>Status: {transaction.status}</p>
-                  </div>
-                  <div className="transaction-amount">${transaction.price}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="empty-state">No hay transacciones pendientes</p>
-          )}
-        </div>
-
-        {/* Acciones Rápidas */}
-        <div className="dashboard-card actions-card">
-          <h3>Acciones Rápidas</h3>
-          <div className="actions-grid">
-            <Link to="/comprador/buscar-lotes" className="action-item">
-              <div className="action-icon">🔍</div>
-              <span>Buscar Lotes</span>
-            </Link>
-            <Link to="/comprador/certificacion" className="action-item">
-              <div className="action-icon">🏦</div>
-              <span>Solicitar Crédito</span>
-            </Link>
-            <Link to="/comprador/perfil" className="action-item">
-              <div className="action-icon">👤</div>
-              <span>Mi Perfil</span>
-            </Link>
-            <Link to="/comprador/favoritos" className="action-item">
-              <div className="action-icon">⭐</div>
-              <span>Favoritos</span>
-            </Link>
-          </div>
-        </div>
-      </div>
+      </main>
     </div>
   );
 };
+
+function BuyerDashboardHome() {
+  return (
+    <div className="dashboard-section">
+      <div className="section-header">
+        <h2>Opciones Rápidas</h2>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+        <Link to="/comprador/lotes" className="btn btn-primary" style={{ padding: '20px', textAlign: 'center', borderRadius: '8px' }}>
+          <List size={24} style={{ marginRight: '8px' }} />
+          Explorar Lotes
+        </Link>
+        <Link to="/comprador/certificacion" className="btn btn-secondary" style={{ padding: '20px', textAlign: 'center', borderRadius: '8px' }}>
+          <FileText size={24} style={{ marginRight: '8px' }} />
+          Solicitar Certificación
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 export default BuyerDashboard;

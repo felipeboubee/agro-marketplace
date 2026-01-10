@@ -25,6 +25,7 @@ export default function UsersList() {
   });
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(true);
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   useEffect(() => {
     loadUsers();
@@ -158,8 +159,9 @@ export default function UsersList() {
             >
               <option value="">Todos los tipos</option>
               <option value="admin">Administrador</option>
-              <option value="customer">Cliente</option>
-              <option value="moderator">Moderador</option>
+              <option value="comprador">Comprador</option>
+              <option value="vendedor">Vendedor</option>
+              <option value="banco">Banco</option>
             </select>
           </div>
 
@@ -249,9 +251,36 @@ export default function UsersList() {
                         >
                           {user.is_active ? <UserX size={18} /> : <UserCheck size={18} />}
                         </button>
-                        <button className="btn-icon" title="Más opciones">
-                          <MoreVertical size={18} />
-                        </button>
+                        <div className="action-menu">
+                          <button 
+                            className="btn-icon" 
+                            onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                            title="Más opciones"
+                          >
+                            <MoreVertical size={18} />
+                          </button>
+                          {openMenuId === user.id && (
+                            <div className="menu-dropdown">
+                              <button onClick={() => {
+                                window.location.href = `/admin/users/${user.id}`;
+                              }}>Ver Detalles</button>
+                              <button onClick={() => {
+                                // Editar usuario
+                                alert(`Editar usuario ${user.name}`);
+                              }}>Editar</button>
+                              <button onClick={() => {
+                                // Ver historial
+                                alert(`Historial de ${user.name}`);
+                              }}>Ver Historial</button>
+                              <hr style={{margin: '4px 0'}} />
+                              <button style={{color: '#ef4444'}} onClick={() => {
+                                if (window.confirm(`¿Eliminar usuario ${user.name}?`)) {
+                                  alert('Eliminando usuario...');
+                                }
+                              }}>Eliminar</button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

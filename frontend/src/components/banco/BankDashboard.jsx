@@ -1,270 +1,173 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { api } from "../../services/api";
+import React, { useState } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
+import CertificationRequests from './CertificationRequests';
+import { CheckCircle, Clock, DollarSign, Users } from 'lucide-react';
 import '../../styles/dashboard.css';
 
 const BankDashboard = () => {
-  const [user, setUser] = useState(null);
-  const [stats, setStats] = useState({
+  const [user] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
+  const [stats] = useState({
     pendingRequests: 0,
     approvedCertifications: 0,
     totalVolume: 0,
-    topBuyers: []
+    certifiedClients: 0,
+    approvalRate: 0,
+    avgResponseTime: 0
   });
-  const [recentRequests, setRecentRequests] = useState([]);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      const token = localStorage.getItem('token');
-      try {
-        // Obtener datos del banco
-        const userResponse = await api.get('/users/profile', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setUser(userResponse.data.user);
-
-        // Obtener estadísticas
-        const statsResponse = await api.get('/certifications/stats', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setStats(statsResponse.data);
-
-        // Obtener solicitudes recientes
-        const requestsResponse = await api.get('/certifications/pending', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setRecentRequests(requestsResponse.data);
-      } catch (error) {
-        console.error('Error fetching bank dashboard data:', error);
-      }
-    };
-
-    fetchDashboardData();
-  }, []);
-
-  const handleApprove = async (certificationId) => {
-    try {
-      const token = localStorage.getItem('token');
-      await api.put(
-        `/certifications/${certificationId}/status`,
-        { status: 'aprobado' },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      // Actualizar lista
-      setRecentRequests(prev => 
-        prev.map(req => 
-          req.id === certificationId 
-            ? { ...req, status: 'aprobado' }
-            : req
-        )
-      );
-    } catch (error) {
-      console.error('Error approving certification:', error);
-    }
-  };
-
-  const handleReject = async (certificationId) => {
-    try {
-      const token = localStorage.getItem('token');
-      await api.put(
-        `/certifications/${certificationId}/status`,
-        { status: 'rechazado' },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      // Actualizar lista
-      setRecentRequests(prev => 
-        prev.map(req => 
-          req.id === certificationId 
-            ? { ...req, status: 'rechazado' }
-            : req
-        )
-      );
-    } catch (error) {
-      console.error('Error rejecting certification:', error);
-    }
-  };
-
-  const handleRequestMoreInfo = async (certificationId) => {
-    try {
-      const token = localStorage.getItem('token');
-      await api.put(
-        `/certifications/${certificationId}/status`,
-        { status: 'mas_datos' },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      // Actualizar lista
-      setRecentRequests(prev => 
-        prev.map(req => 
-          req.id === certificationId 
-            ? { ...req, status: 'mas_datos' }
-            : req
-        )
-      );
-    } catch (error) {
-      console.error('Error requesting more info:', error);
-    }
+  const navigateTo = (path) => {
+    navigate(path);
   };
 
   return (
-    <div className="dashboard-container">
-      {/* Header */}
-      <div className="dashboard-header">
-        <div className="header-content">
-          <h1>Panel del Banco Certificador</h1>
-          <p>{user?.name} - Gestión de Certificaciones</p>
+    <div className="admin-layout">
+      <aside className="admin-sidebar">
+        <div className="sidebar-header">
+          <h2>Banco</h2>
         </div>
-        <div className="header-actions">
-          <Link to="/banco/solicitudes" className="btn btn-primary">
+        
+        <nav className="sidebar-nav">
+          <ul>
+            <li>
+              <button 
+                className="nav-item active"
+                onClick={() => navigateTo('/banco')}
+              >
+                <CheckCircle size={20} />
+                <span>Dashboard</span>
+              </button>
+            </li>
+            <li>
+              <button 
+                className="nav-item"
+                onClick={() => navigateTo('/banco/solicitudes')}
+              >
+                <Clock size={20} />
+                <span>Solicitudes</span>
+              </button>
+            </li>
+          </ul>
+        </nav>
+
+        <div className="sidebar-footer">
+          <button 
+            onClick={() => {
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              navigate('/login');
+            }}
+            className="logout-btn"
+          >
+            Cerrar Sesión
+          </button>
+        </div>
+      </aside>
+
+      <main className="admin-main">
+        <div className="admin-content">
+          <div className="page-header">
+            <h1>
+              <CheckCircle size={32} />
+              Panel del Banco Certificador
+            </h1>
+            <p style={{color: '#6b7280', marginTop: '4px'}}>Gestión de certificaciones - {user?.name}</p>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="stats-grid">
+            <div className="stat-card stat-blue">
+              <div className="stat-header">
+                <Clock size={24} />
+                <span className="stat-title">Solicitudes Pendientes</span>
+              </div>
+              <div className="stat-content">
+                <h3 className="stat-value">{stats.pendingRequests}</h3>
+              </div>
+            </div>
+
+            <div className="stat-card stat-green">
+              <div className="stat-header">
+                <CheckCircle size={24} />
+                <span className="stat-title">Certificaciones Aprobadas</span>
+              </div>
+              <div className="stat-content">
+                <h3 className="stat-value">{stats.approvedCertifications}</h3>
+              </div>
+            </div>
+
+            <div className="stat-card stat-purple">
+              <div className="stat-header">
+                <DollarSign size={24} />
+                <span className="stat-title">Volumen Total</span>
+              </div>
+              <div className="stat-content">
+                <h3 className="stat-value">${(stats.totalVolume / 1000000).toFixed(1)}M</h3>
+              </div>
+            </div>
+
+            <div className="stat-card stat-orange">
+              <div className="stat-header">
+                <Users size={24} />
+                <span className="stat-title">Clientes Certificados</span>
+              </div>
+              <div className="stat-content">
+                <h3 className="stat-value">{stats.certifiedClients}</h3>
+              </div>
+            </div>
+          </div>
+
+          <Routes>
+            <Route path="/" element={<BankDashboardHome stats={stats} />} />
+            <Route path="/solicitudes" element={<CertificationRequests />} />
+          </Routes>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+function BankDashboardHome({ stats }) {
+  return (
+    <div className="dashboard-section">
+      <div className="section-header">
+        <h2>Estadísticas Rápidas</h2>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+        <div style={{ padding: '20px', backgroundColor: '#f3f4f6', borderRadius: '8px', borderLeft: '4px solid #3b82f6' }}>
+          <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>Tasa de Aprobación</div>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937' }}>{stats.approvalRate}%</div>
+        </div>
+        <div style={{ padding: '20px', backgroundColor: '#f3f4f6', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
+          <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>Tiempo Promedio de Respuesta</div>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937' }}>{stats.avgResponseTime} hs</div>
+        </div>
+      </div>
+
+      <div className="dashboard-section">
+        <div className="section-header">
+          <h2>Acciones Rápidas</h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+          <button 
+            onClick={() => window.location.href = '/banco/solicitudes'}
+            className="btn btn-primary"
+            style={{ padding: '20px', textAlign: 'center', borderRadius: '8px' }}
+          >
             Ver Todas las Solicitudes
-          </Link>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon">⏳</div>
-          <div className="stat-content">
-            <h3>{stats.pendingRequests}</h3>
-            <p>Solicitudes Pendientes</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">✓</div>
-          <div className="stat-content">
-            <h3>{stats.approvedCertifications}</h3>
-            <p>Certificaciones Aprobadas</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">💰</div>
-          <div className="stat-content">
-            <h3>${stats.totalVolume.toLocaleString()}</h3>
-            <p>Volumen Total</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">👥</div>
-          <div className="stat-content">
-            <h3>{stats.topBuyers.length}</h3>
-            <p>Clientes Certificados</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="dashboard-content">
-        {/* Left Column - Pending Requests */}
-        <div className="dashboard-column">
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h3>Solicitudes Pendientes</h3>
-              <Link to="/banco/solicitudes">Ver todas</Link>
-            </div>
-            <div className="requests-list">
-              {recentRequests
-                .filter(req => req.status === 'pendiente')
-                .slice(0, 5)
-                .map((request) => (
-                  <div key={request.id} className="request-item">
-                    <div className="request-info">
-                      <div className="request-header">
-                        <h4>{request.user_name}</h4>
-                        <span className="request-date">
-                          {new Date(request.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="request-email">{request.email}</p>
-                      <div className="request-details">
-                        <span>Solicitud #{request.id}</span>
-                        <span>•</span>
-                        <span>Volumen: ${request.financial_data?.requested_amount?.toLocaleString() || '0'}</span>
-                      </div>
-                    </div>
-                    <div className="request-actions">
-                      <button
-                        onClick={() => handleApprove(request.id)}
-                        className="btn btn-success btn-small"
-                      >
-                        Aprobar
-                      </button>
-                      <button
-                        onClick={() => handleRequestMoreInfo(request.id)}
-                        className="btn btn-warning btn-small"
-                      >
-                        Más Datos
-                      </button>
-                      <button
-                        onClick={() => handleReject(request.id)}
-                        className="btn btn-danger btn-small"
-                      >
-                        Rechazar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column - Top Buyers */}
-        <div className="dashboard-column">
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h3>Top Compradores Certificados</h3>
-              <span className="card-badge">Por volumen</span>
-            </div>
-            <div className="buyers-list">
-              {stats.topBuyers.map((buyer, index) => (
-                <div key={buyer.id} className="buyer-item">
-                  <div className="buyer-rank">#{index + 1}</div>
-                  <div className="buyer-info">
-                    <h4>{buyer.name}</h4>
-                    <p>{buyer.email}</p>
-                  </div>
-                  <div className="buyer-volume">
-                    <div className="volume-label">Volumen</div>
-                    <div className="volume-value">
-                      ${buyer.total_volume?.toLocaleString() || '0'}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="dashboard-card">
-            <h3>Estadísticas Rápidas</h3>
-            <div className="quick-stats">
-              <div className="stat-row">
-                <span className="stat-label">Tasa de Aprobación:</span>
-                <span className="stat-value">78%</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">Tiempo Promedio Respuesta:</span>
-                <span className="stat-value">48 horas</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">Solicitudes Este Mes:</span>
-                <span className="stat-value">142</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">Clientes Activos:</span>
-                <span className="stat-value">89</span>
-              </div>
-            </div>
-          </div>
+          </button>
+          <button 
+            onClick={() => window.location.href = '/banco'}
+            className="btn btn-secondary"
+            style={{ padding: '20px', textAlign: 'center', borderRadius: '8px' }}
+          >
+            Generar Reporte
+          </button>
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default BankDashboard;

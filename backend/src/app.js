@@ -41,7 +41,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Algo salió mal!' });
 });
 
-// Al final de backend/src/app.js, antes de app.listen():
+// Inicializar base de datos
 async function initializeDatabase() {
   try {
     const pool = require('./config/database');
@@ -58,7 +58,7 @@ async function initializeDatabase() {
     const result = await pool.query(checkQuery);
     
     if (!result.rows[0].exists) {
-      console.log('📦 Base de datos no inicializada. Ejecutando script...');
+      console.log('📦 Base de datos no inicializada. Ejecutando script de inicialización...');
       const { initDatabase } = require('../scripts/db-init');
       await initDatabase();
     }
@@ -67,25 +67,20 @@ async function initializeDatabase() {
   }
 }
 
-// Llamar a la función de inicialización
-initializeDatabase().then(() => {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  });
-});
-
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Servidor backend corriendo en puerto ${PORT}`);
-  console.log(`🌐 Accesible desde: http://localhost:${PORT}`);
-  console.log(`🔗 Frontend debería usar: http://localhost:5173`);
-});
-
-app.listen(PORT, async () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-  
-  // Inicializar tablas del admin dashboard
-  await initAdminTables();
+// Iniciar servidor único
+initializeDatabase().then(() => {
+  app.listen(PORT, '0.0.0.0', async () => {
+    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+    console.log(`✅ Servidor backend corriendo en puerto ${PORT}`);
+    console.log(`🌐 Accesible desde: http://localhost:${PORT}`);
+    console.log(`🔗 Frontend debería usar: http://localhost:5173`);
+    
+    // Inicializar tablas del admin dashboard
+    await initAdminTables();
+  });
+}).catch(error => {
+  console.error('❌ Error al inicializar:', error);
+  process.exit(1);
 });
