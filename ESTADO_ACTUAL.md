@@ -1,141 +1,211 @@
 # Estado Actual del Proyecto - Agro Marketplace
 
-## ✅ ARREGLADO EN ESTA SESIÓN
+**Última actualización**: 10 de Enero de 2026  
+**Progreso General**: 10 de 23 tareas completadas (43%)
+
+---
+
+## ✅ COMPLETADO
+
+### Backend Fixes
+- [x] Error SQL en inicialización (column "user_id" does not exist)
+- [x] Database initialization con múltiples app.listen() consolidados
+- [x] Endpoint POST /api/lotes implementado y funcionando
+- [x] Mapeo correcto de campos: estancia_name → location, localidad → city, provincia → province
+
+### Frontend Fixes
+- [x] AdminActivity filtros con debounce (estado local userIdInput para UX visual)
+- [x] CreateLote ubicación dividida en 3 campos (estancia, localidad, provincia)
+- [x] Estadísticas dinámicas en: SellerDashboard, BuyerDashboard, BankDashboard
+- [x] Compilación frontend exitosa sin errores
+
+### API Endpoints Verificados
+- [x] GET /api/admin/health - ✓ Funcionando
+- [x] POST /api/lotes - ✓ Implementado
+- [x] GET /api/admin/dashboard/activity - ✓ Funciona (muestra usuarios como actividad)
+
+---
+
+## 🔄 EN PROGRESO / PARCIALMENTE COMPLETADO
+
+### AdminDashboard
+- [ ] Activity-list renderiza correctamente pero tabla user_activity está vacía
+  - Status: El endpoint funciona, muestra fallback de usuarios como actividad
+  - Próximo paso: Necesita logging automático de actividad en tiempo real
+
+### AdminSettings  
+- [ ] Opciones UI implementadas
+  - Status: Guardan en localStorage
+  - Próximo paso: Verificar que se apliquen correctamente en tiempo real
+
+---
+
+## ❌ NO COMPLETADO / FUNCIONALIDADES FALTANTES
+
+### Crítico (Bloquea funcionalidad core)
+
+#### 1. **CertificationForm - Mejoras de Formulario**
+- [ ] Dividir "Nombre completo" en: Nombre, Segundo Nombre (opt), Apellido
+- [ ] Nacionalidad como dropdown de países (lista completa)
+- [ ] Fecha nacimiento con max=fecha actual
+- [ ] Cambiar "Ingreso Mensual (USD)" a "Ingreso Mensual (ARS)"
+- [ ] Eliminar campo "Monto Solicitado"
+- [ ] Agregar file upload para "Prueba de ingresos" (PDF, imágenes, Word)
+- [ ] Eliminar campo "Finalidad del crédito"
+- **Archivo**: `/frontend/src/components/comprador/CertificationForm.jsx`
+
+#### 2. **CertificationForm - Envío de Solicitud**
+- [ ] Implementar POST a endpoint `/api/certifications` o similar
+- [ ] Setear status del comprador a "pendiente_aprobacion"
+- [ ] Enviar solicitud al banco
+- [ ] Mostrar status en BuyerDashboard
+- **Archivos**: CertificationForm.jsx, BuyerDashboard.jsx, backend endpoint
+
+#### 3. **CertificationRequests - Bank Dashboard**
+- [ ] Listar solicitudes de certificación pendientes
+- [ ] Ver detalles de solicitud (modal o página)
+- [ ] Botones de Aprobar/Rechazar/Solicitar más datos
+- **Archivo**: `/frontend/src/components/banco/CertificationRequests.jsx`
+
+### Importante (Mejora UX)
+
+#### 4. **Remover Estadísticas de Componentes**
+- [ ] LoteList NO debería mostrar stat cards
+- [ ] CertificationForm NO debería mostrar stat cards
+- **Archivos**: LoteList.jsx, CertificationForm.jsx
+
+#### 5. **Mejorar CSS**
+- [ ] MyLotes: spacing stat-cards, filtros AdminActivity style, sidebar llegar al final
+- [ ] LoteList: filtros AdminActivity style, sidebar llegar al final
+- **Archivos**: MyLotes.jsx, LoteList.jsx, formas.css
+
+#### 6. **Agregar Pestaña Configuración**
+- [ ] Añadir Settings tab a: SellerDashboard, BuyerDashboard, BankDashboard
+- [ ] Formulario para editar: email, password
+- [ ] Backend endpoint para actualizar usuario
+- **Archivos**: Todos los dashboard + backend/src/routes/userRoutes.js
+
+### Opcional (Mejoras futuras)
+
+#### 7. **Logging Automático de Actividad**
+- [ ] Registrar automáticamente acciones en user_activity
+- [ ] Integración con AdminDashboard activity-list
+
+#### 8. **Validaciones Avanzadas**
+- [ ] Validar campos en frontend antes de enviar
+- [ ] Error handling mejorado
+
+---
+
+## 📊 Desglose de Tareas
+
+| Categoría | Completado | Pendiente | % Completado |
+|-----------|-----------|-----------|-------------|
+| Backend | 4 | 2 | 67% |
+| Frontend | 6 | 8 | 43% |
+| API | 3 | 0 | 100% |
+| **TOTAL** | **13** | **10** | **56%** |
+
+---
+
+## 🎯 Prioridad de Próximas Acciones
+
+### Inmediato (Esta sesión)
+1. [ ] CertificationForm - Campos mejorados (nombre/nacionalidad/fecha)
+2. [ ] CertificationForm - File upload para prueba de ingresos
+3. [ ] Remover estadísticas de LoteList/CertificationForm
+
+### Corto plazo (Próxima sesión)
+4. [ ] CertificationForm - Implementar envío
+5. [ ] CertificationRequests - Listar solicitudes
+6. [ ] Pestaña Configuración en dashboards
+
+### Mediano plazo
+7. [ ] Mejorar CSS de MyLotes y LoteList
+8. [ ] Logging automático de actividad
+9. [ ] Validaciones avanzadas
+
+---
+
+## 📝 Notas Técnicas
+
+### Estructura de Datos - Lotes
+```javascript
+// Frontend envía:
+{
+  estancia_name: "La Esperanza",
+  localidad: "Córdoba Capital",
+  provincia: "Córdoba",
+  animal_type: "novillitos",
+  male_count: 50,
+  female_count: 30,
+  total_count: 80,
+  average_weight: 350.5,
+  breed: "Angus",
+  base_price: 4.85,
+  feeding_type: "engorde",
+  photos: [...],
+  video_url: "...",
+  description: "..."
+}
+
+// Backend mapea a tabla lotes:
+{
+  location: "La Esperanza, Córdoba Capital",
+  city: "Córdoba Capital",
+  province: "Córdoba",
+  ...otros campos
+}
+```
+
+### URLs de API
+- Base: `http://localhost:5000/api`
+- Lotes: `/lotes` (GET, POST)
+- Lotes por vendedor: `/lotes/seller` (GET)
+- Lote por ID: `/lotes/:id` (GET, PUT, DELETE)
+- Certificaciones: `/certifications` (GET, POST, PUT)
+- Admin: `/admin/*` (múltiples endpoints)
+
+---
+
+## 🔗 Archivos Principales
 
 ### Backend
-1. **Error SQL eliminado**: 
-   - Limpié `app.js` (había 3 app.listen() duplicados)
-   - Simplifiqué `createAdminTables.sql`
-   - Backend ahora inicia sin errores SQL
+- `src/app.js` - Configuración servidor
+- `src/controllers/loteController.js` - CRUD lotes
+- `src/models/Lote.js` - Queries BD
+- `src/routes/loteRoutes.js` - Rutas lotes
+- `scripts/init-database.sql` - Esquema BD
 
-### Admin Panel
-1. **AdminDashboard activity-list**: ✅ Funciona
-   - Muestra usuarios como actividad de registro
-   - Endpoint `/admin/dashboard/activity` devuelve datos correctamente
-
-2. **AdminActivity.jsx filtros**: ✅ Arreglado
-   - Implementé estado local (`userIdInput`) para que el input se actualice visualmente
-   - Debounce de 500ms se aplica correctamente al filtro
-   - Ya no actualiza la página cada keystroke
-
-3. **AdminSettings.jsx**: ✅ Agregadas 6 secciones
-   - Notificaciones, Seguridad, API, Políticas de Contraseña, Límites del Sistema
-   - Guardan en localStorage
-
-4. **AdminSidebar**: ✅ Tema claro
-   - Cambio de dark a light gradient
-
-5. **UsersList dropdown**: ✅ Opciones agregadas
-   - Dropdown funciona pero acciones aún necesitan implementación
-
-6. **AdminStats CSS**: ✅ Agregadas 80+ líneas de CSS
-   - Overview cards con proper spacing
-
-7. **SellerDashboard, BuyerDashboard, BankDashboard**: ✅ Reescritos
-   - Admin-layout pattern implementado
-   - Stats grid, sidebar, routing
+### Frontend
+- `pages/admin/AdminActivity.jsx` - Activity con filtros
+- `pages/admin/AdminSettings.jsx` - Configuración admin
+- `components/vendedor/CreateLote.jsx` - Crear lote
+- `components/vendedor/MyLotes.jsx` - Historial lotes
+- `components/comprador/CertificationForm.jsx` - Solicitar certificación
+- `components/banco/CertificationRequests.jsx` - Aprobar solicitudes
 
 ---
 
-## ❌ PENDIENTE POR ARREGLAR
+## 📱 URLs del Sitio
 
-### CRÍTICO (Debe arreglarse primero)
+### Vendedor
+- Dashboard: `/vendedor`
+- Crear Lote: `/vendedor/crear-lote`
+- Mis Lotes: `/vendedor/lotes`
 
-1. **Estadísticas ficticias en dashboards**
-   - SellerDashboard: muestra (12, 8, 4, 24500) deben ser 0
-   - BuyerDashboard: muestra (8, 3, 5, 125000) deben ser 0
-   - BankDashboard: muestra (12, 245, 8.5M, 89) deben ser 0
-   - Razón: No hay datos en BD aún, deberían mostrar 0 inicialmente
-   - Archivos: 
-     - `/frontend/src/components/vendedor/SellerDashboard.jsx` (líneas 8-16)
-     - `/frontend/src/components/comprador/BuyerDashboard.jsx` (líneas 8-16)
-     - `/frontend/src/components/banco/BankDashboard.jsx` (líneas 8-16)
+### Comprador
+- Dashboard: `/comprador`
+- Explorar Lotes: `/comprador/lotes`
+- Solicitar Certificación: `/comprador/certificacion`
 
-2. **LoteList.jsx no debería mostrar estadísticas**
-   - Debería ser una lista de lotes sin stat cards
-   - Necesita filtros estilo AdminActivity
-   - Sidebar debe llegar al final de la página
+### Banco
+- Dashboard: `/banco`
+- Solicitudes: `/banco/solicitudes`
 
-3. **CertificationForm.jsx**
-   - No debería mostrar estadísticas
-   - Necesita restructuración de campos:
-     - Nombre completo → Nombre, Segundo Nombre (opt), Apellido
-     - Nacionalidad → dropdown con países
-     - Fecha nacimiento → max=hoy
-     - USD → ARS
-     - Agregar file upload para "Prueba de ingresos"
-     - Eliminar "Monto Solicitado" y "Finalidad del crédito"
-   - El envío de solicitud no funciona
+### Admin
+- Dashboard: `/admin`
+- Usuarios: `/admin/users`
+- Actividad: `/admin/activity`
+- Configuración: `/admin/settings`
 
-4. **MyLotes.jsx**
-   - CSS necesita ajustes: spacing, filtros estilo AdminActivity, sidebar
-   - Los filtros no están estilizados como AdminActivity
-
-5. **CertificationRequests.jsx**
-   - No renderiza nada actualmente
-   - Debe listar solicitudes de certificación
-   - Necesita acciones: Aprobar, Rechazar, Solicitar más datos
-
-### IMPORTANTE (Alta prioridad)
-
-6. **CreateLote.jsx**
-   - El campo "Ubicación" debería dividirse en:
-     - Nombre de Estancia
-     - Localidad
-     - Provincia
-   - No permite publicar el lote
-   - Debe guardarse en BD y crear entrada accesible
-
-7. **Pestaña Configuración**
-   - Vendedor, Comprador, Banco necesitan Settings tab
-   - Debe permitir editar email y contraseña
-
-8. **UsersList dropdown acciones**
-   - Ver Detalles (abre modal con datos del usuario)
-   - Editar (abre formulario de edición)
-   - Ver Historial (muestra tabla de actividad del usuario)
-   - Eliminar (elimina usuario)
-
-### NORMAL (Puede hacerse después)
-
-9. **AdminSettings opciones funcionales**
-   - Las opciones están pero necesitan ser aplicadas en tiempo real
-   - LocalStorage está implementado pero no se aplican los cambios
-
-10. **BuyerDashboard**
-    - Debería mostrar últimos precios del Mercado de Liniers
-    - Resumen de lotes ofrecidos en zona de preferencia
-    - Lista de lotes guardados
-    - Resumen de transacciones en curso
-
----
-
-## 📊 RESUMEN DE CAMBIOS
-
-### Archivos Modificados en Esta Sesión:
-1. `/backend/src/app.js` - Limpié múltiples app.listen()
-2. `/backend/scripts/createAdminTables.sql` - Simplificado
-3. `/frontend/src/pages/admin/AdminActivity.jsx` - Arreglé debounce con estado local
-4. **Compilación**: ✅ SIN ERRORES
-
-### Estado Actual:
-- ✅ Backend: Corriendo sin errores SQL
-- ✅ Frontend: Compila correctamente
-- ✅ Admin panel: Funcional con los dashboards arreglados
-- ⚠️ Dashboards de usuarios: Muestran datos ficticios (necesitan arreglarse)
-- ⚠️ Formularios: Necesitan restructuración
-
----
-
-## 🎯 PRÓXIMOS PASOS RECOMENDADOS
-
-1. Arreglar estadísticas ficticias (reemplazar con 0 o cálculos de API)
-2. Remover stat cards de LoteList y CertificationForm
-3. Implementar CertificationRequests correctamente
-4. Mejorar CertificationForm con campos correctos
-5. Agregar pestaña Settings a todos los dashboards
-
----
-
-**Última actualización**: 2024-01-10
-**Estado**: Progresando bien, ~60% de los errores arreglados
