@@ -1,96 +1,404 @@
-const pool = require('../config/database');
+const pool = require('../config/database.js');
 
-const adminController = {
-  async getStats(req, res) {
-    try {
-      // Estadísticas generales
-      const statsQuery = `
-        SELECT 
-          (SELECT COUNT(*) FROM users) as total_users,
-          (SELECT COUNT(*) FROM users WHERE last_login > NOW() - INTERVAL '7 days') as active_users,
-          (SELECT COUNT(*) FROM transactions) as total_transactions,
-          (SELECT COALESCE(SUM(price), 0) FROM transactions WHERE status = 'completo') as total_volume,
-          (SELECT COUNT(*) FROM lotes WHERE status = 'ofertado') as active_lotes
-      `;
-
-      const statsResult = await pool.query(statsQuery);
-      const stats = statsResult.rows[0];
-
-      // Distribución de usuarios por tipo
-      const userDistributionQuery = `
-        SELECT user_type, COUNT(*) as count
-        FROM users
-        GROUP BY user_type
-      `;
-      const userDistributionResult = await pool.query(userDistributionQuery);
-      const userDistribution = {};
-      userDistributionResult.rows.forEach(row => {
-        userDistribution[row.user_type] = parseInt(row.count);
-      });
-
-      // Tendencia de transacciones (últimos 30 días)
-      const transactionTrendQuery = `
-        SELECT 
-          DATE(created_at) as date,
-          COUNT(*) as count,
-          COALESCE(SUM(price), 0) as volume
-        FROM transactions
-        WHERE created_at > NOW() - INTERVAL '30 days'
-        GROUP BY DATE(created_at)
-        ORDER BY date
-      `;
-      const transactionTrendResult = await pool.query(transactionTrendQuery);
-
-      res.json({
-        ...stats,
-        userDistribution,
-        transactionTrends: transactionTrendResult.rows
-      });
-    } catch (error) {
-      console.error('Error fetching admin stats:', error);
-      res.status(500).json({ error: 'Error al obtener estadísticas' });
-    }
-  },
-
-  async getActivity(req, res) {
-    try {
-      const query = `
-        SELECT 
-          'user_signup' as type,
-          'Nuevo usuario registrado: ' || name as description,
-          created_at as timestamp
-        FROM users
-        WHERE created_at > NOW() - INTERVAL '7 days'
-        
-        UNION ALL
-        
-        SELECT 
-          'transaction' as type,
-          'Nueva transacción: $' || price as description,
-          created_at as timestamp
-        FROM transactions
-        WHERE created_at > NOW() - INTERVAL '7 days'
-        
-        UNION ALL
-        
-        SELECT 
-          'lote_created' as type,
-          'Nuevo lote publicado: ' || animal_type as description,
-          created_at as timestamp
-        FROM lotes
-        WHERE created_at > NOW() - INTERVAL '7 days'
-        
-        ORDER BY timestamp DESC
-        LIMIT 20
-      `;
-
-      const { rows } = await pool.query(query);
-      res.json(rows);
-    } catch (error) {
-      console.error('Error fetching activity:', error);
-      res.status(500).json({ error: 'Error al obtener actividad' });
-    }
+// Health check
+exports.healthCheck = async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ 
+      status: 'OK', 
+      message: 'Conexión a la base de datos establecida',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).json({ 
+      status: 'ERROR', 
+      message: 'Error de conexión a la base de datos',
+      error: error.message 
+    });
   }
 };
 
-module.exports = adminController;
+// Obtener estadísticas básicas
+exports.getStats = async (req, res) => {
+  try {
+    // Consultas básicas
+    const [totalUsers, activeUsers, newUsersToday] = await Promise.all([
+      pool.query('SELECT COUNT(*) as count FROM users'),
+      pool.query("SELECT COUNT(*) as count FROM users WHERE is_active = true"),
+      pool.query(`
+        SELECT COUNT(*) as count FROM users 
+        WHERE DATE(created_at) = CURRENT_DATE
+      `)
+    ]);
+
+    // Consultas condicionales para tablas que pueden no existir
+    let totalOrders = 0;
+    let pendingOrders = 0;
+    let revenue = 0;
+    let avgOrderValue = 0;
+    let dailyActivity = 0;
+
+    try {
+      const ordersResult = await pool.query('SELECT COUNT(*) as count FROM orders');
+      totalOrders = parseInt(ordersResult.rows[0]?.count || 0);
+      
+      const pendingResult = await pool.query("SELECT COUNT(*) as count FROM orders WHERE status = 'pending'");
+      pendingOrders = parseInt(pendingResult.rows[0]?.count || 0);
+      
+      const revenueResult = await pool.query("SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE status = 'completed'");
+      revenue = parseFloat(revenueResult.rows[0]?.total || 0);
+      
+      const avgResult = await pool.query("SELECT COALESCE(AVG(total_amount), 0) as avg FROM orders WHERE status = 'completed'");
+      avgOrderValue = parseFloat(avgResult.rows[0]?.avg || 0);
+    } catch (error) {
+      console.log('Tabla orders no disponible para estadísticas:', error.message);
+    }
+
+    try {
+      const activityResult = await pool.query(`
+        SELECT COUNT(*) as count FROM user_activity 
+        WHERE DATE(created_at) = CURRENT_DATE
+      `);
+      dailyActivity = parseInt(activityResult.rows[0]?.count || 0);
+    } catch (error) {
+      console.log('Tabla user_activity no disponible:', error.message);
+    }
+
+    res.json({
+      summary: {
+        totalUsers: parseInt(totalUsers.rows[0].count),
+        activeUsers: parseInt(activeUsers.rows[0].count),
+        totalOrders,
+        pendingOrders,
+        revenue,
+        newUsersToday: parseInt(newUsersToday.rows[0].count),
+        avgOrderValue,
+        dailyActivity
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: 'Error al obtener estadísticas', details: error.message });
+  }
+};
+
+// Obtener actividad reciente
+exports.getActivity = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+    
+    let activities = [];
+    
+    try {
+      const result = await pool.query(`
+        SELECT 
+          ua.*,
+          u.name as user_name,
+          u.email as user_email
+        FROM user_activity ua
+        LEFT JOIN users u ON u.id = ua.user_id
+        ORDER BY ua.created_at DESC
+        LIMIT $1
+      `, [limit]);
+      
+      activities = result.rows;
+    } catch (error) {
+      // Si la tabla no existe, crear actividad básica desde usuarios
+      console.log('Tabla user_activity no encontrada, generando datos básicos:', error.message);
+      
+      const usersResult = await pool.query(`
+        SELECT 
+          id,
+          name as user_name,
+          email as user_email,
+          created_at,
+          'user_registration' as activity_type,
+          'Usuario registrado en el sistema' as description
+        FROM users
+        ORDER BY created_at DESC
+        LIMIT $1
+      `, [limit]);
+      
+      activities = usersResult.rows.map(user => ({
+        ...user,
+        id: user.id,
+        user_id: user.id,
+        activity_type: 'user_registration',
+        description: 'Usuario registrado en el sistema'
+      }));
+    }
+
+    res.json(activities);
+  } catch (error) {
+    console.error('Error fetching activity:', error);
+    res.status(500).json({ error: 'Error al obtener actividad', details: error.message });
+  }
+};
+
+// Obtener estadísticas detalladas
+exports.getDetailedStats = async (req, res) => {
+  try {
+    const { period = '30days' } = req.query;
+    let interval = '30 days';
+    
+    switch(period) {
+      case '7days': interval = '7 days'; break;
+      case '30days': interval = '30 days'; break;
+      case '90days': interval = '90 days'; break;
+      case '1year': interval = '365 days'; break;
+    }
+
+    // Crecimiento de usuarios (siempre disponible)
+    const userGrowth = await pool.query(`
+      SELECT 
+        DATE(created_at) as date,
+        COUNT(*) as new_users
+      FROM users
+      WHERE created_at >= NOW() - INTERVAL '${interval}'
+      GROUP BY DATE(created_at)
+      ORDER BY date
+    `);
+
+    // Distribución de tipos de usuario
+    const userTypes = await pool.query(`
+      SELECT 
+        user_type,
+        COUNT(*) as count,
+        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM users), 2) as percentage
+      FROM users
+      GROUP BY user_type
+    `);
+
+    // Datos condicionales
+    let revenueTrend = [];
+    let orderStats = [];
+    let activityByHour = [];
+
+    try {
+      const revenueResult = await pool.query(`
+        SELECT 
+          DATE(created_at) as date,
+          COALESCE(SUM(total_amount), 0) as daily_revenue,
+          COUNT(*) as orders_count
+        FROM orders
+        WHERE status = 'completed' 
+          AND created_at >= NOW() - INTERVAL '${interval}'
+        GROUP BY DATE(created_at)
+        ORDER BY date
+      `);
+      revenueTrend = revenueResult.rows;
+    } catch (error) {
+      console.log('No se pudieron obtener tendencias de ingresos:', error.message);
+    }
+
+    try {
+      const orderStatsResult = await pool.query(`
+        SELECT 
+          status,
+          COUNT(*) as count,
+          COALESCE(AVG(total_amount), 0) as avg_value
+        FROM orders
+        WHERE created_at >= NOW() - INTERVAL '${interval}'
+        GROUP BY status
+      `);
+      orderStats = orderStatsResult.rows;
+    } catch (error) {
+      console.log('No se pudieron obtener estadísticas de pedidos:', error.message);
+    }
+
+    try {
+      const activityResult = await pool.query(`
+        SELECT 
+          EXTRACT(HOUR FROM created_at) as hour,
+          COUNT(*) as activity_count
+        FROM user_activity
+        WHERE DATE(created_at) = CURRENT_DATE
+        GROUP BY EXTRACT(HOUR FROM created_at)
+        ORDER BY hour
+      `);
+      activityByHour = activityResult.rows;
+    } catch (error) {
+      console.log('No se pudo obtener actividad por hora:', error.message);
+    }
+
+    res.json({
+      userGrowth: userGrowth.rows,
+      revenueTrend,
+      orderStats,
+      userTypes: userTypes.rows,
+      activityByHour
+    });
+  } catch (error) {
+    console.error('Error fetching detailed stats:', error);
+    res.status(500).json({ error: 'Error al obtener estadísticas detalladas', details: error.message });
+  }
+};
+
+// Obtener actividad detallada
+exports.getDetailedActivity = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 50
+    } = req.query;
+    
+    const offset = (page - 1) * limit;
+    
+    let activities = [];
+    let total = 0;
+    let activityTypes = [];
+
+    try {
+      // Contar total
+      const countResult = await pool.query('SELECT COUNT(*) as total FROM user_activity');
+      total = parseInt(countResult.rows[0]?.total || 0);
+
+      // Obtener datos
+      const result = await pool.query(`
+        SELECT 
+          ua.*,
+          u.name as user_name,
+          u.email as user_email
+        FROM user_activity ua
+        LEFT JOIN users u ON u.id = ua.user_id
+        ORDER BY ua.created_at DESC
+        LIMIT $1 OFFSET $2
+      `, [limit, offset]);
+      
+      activities = result.rows;
+
+      // Obtener tipos de actividad
+      const typesResult = await pool.query(`
+        SELECT DISTINCT activity_type 
+        FROM user_activity 
+        ORDER BY activity_type
+      `);
+      activityTypes = typesResult.rows.map(row => row.activity_type);
+    } catch (error) {
+      console.log('Tabla user_activity no disponible, usando datos de usuarios:', error.message);
+      
+      // Usar usuarios como actividad
+      const countResult = await pool.query('SELECT COUNT(*) as total FROM users');
+      total = parseInt(countResult.rows[0]?.total || 0);
+      
+      const usersResult = await pool.query(`
+        SELECT 
+          id,
+          name as user_name,
+          email as user_email,
+          created_at,
+          'user_registration' as activity_type,
+          'Usuario registrado en el sistema' as description
+        FROM users
+        ORDER BY created_at DESC
+        LIMIT $1 OFFSET $2
+      `, [limit, offset]);
+      
+      activities = usersResult.rows.map(user => ({
+        ...user,
+        id: user.id,
+        user_id: user.id
+      }));
+      
+      activityTypes = ['user_registration'];
+    }
+
+    res.json({
+      activities,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / limit)
+      },
+      filters: {
+        activityTypes
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching detailed activity:', error);
+    res.status(500).json({ error: 'Error al obtener actividad detallada', details: error.message });
+  }
+};
+
+// Obtener usuarios
+exports.getUsers = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 20,
+      search = '',
+      user_type = '',
+      is_active = ''
+    } = req.query;
+    
+    const offset = (page - 1) * limit;
+    
+    let query = `
+      SELECT 
+        id, name, email, user_type, is_active, created_at
+      FROM users
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    let paramCount = 1;
+
+    if (search) {
+      query += ` AND (name ILIKE $${paramCount} OR email ILIKE $${paramCount})`;
+      params.push(`%${search}%`);
+      paramCount++;
+    }
+
+    if (user_type) {
+      query += ` AND user_type = $${paramCount}`;
+      params.push(user_type);
+      paramCount++;
+    }
+
+    if (is_active !== '') {
+      query += ` AND is_active = $${paramCount}`;
+      params.push(is_active === 'true');
+      paramCount++;
+    }
+
+    // Contar total
+    const countQuery = `SELECT COUNT(*) as total FROM (${query}) as subquery`;
+    const countResult = await pool.query(countQuery, params);
+    const total = parseInt(countResult.rows[0]?.total || 0);
+
+    // Obtener datos con paginación
+    query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    params.push(limit, offset);
+
+    const users = await pool.query(query, params);
+
+    // Estadísticas adicionales
+    const statsQuery = await pool.query(`
+      SELECT 
+        COUNT(*) as total_users,
+        COUNT(CASE WHEN is_active = true THEN 1 END) as active_users,
+        COUNT(CASE WHEN user_type = 'admin' THEN 1 END) as admin_count,
+        COUNT(CASE WHEN user_type = 'comprador' THEN 1 END) as comprador_count,
+        COUNT(CASE WHEN user_type = 'vendedor' THEN 1 END) as vendedor_count,
+        COUNT(CASE WHEN user_type = 'banco' THEN 1 END) as banco_count,
+        COUNT(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 END) as new_today
+      FROM users
+    `);
+
+    res.json({
+      users: users.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / limit)
+      },
+      stats: statsQuery.rows[0]
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Error al obtener usuarios', details: error.message });
+  }
+};

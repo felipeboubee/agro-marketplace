@@ -24,15 +24,10 @@ class ApiService {
       throw new Error(text || `HTTP ${res.status}`);
     }
 
-    // Evita crash en 204 No Content
     if (res.status === 204) return null;
 
     return res.json();
   }
-
-  /* =========================
-     MÉTODOS GENÉRICOS
-     ========================= */
 
   get(endpoint) {
     return this.request(endpoint);
@@ -52,13 +47,6 @@ class ApiService {
     });
   }
 
-  patch(endpoint, data) {
-    return this.request(endpoint, {
-      method: "PATCH",
-      body: data
-    });
-  }
-
   delete(endpoint) {
     return this.request(endpoint, {
       method: "DELETE"
@@ -66,7 +54,47 @@ class ApiService {
   }
 
   /* =========================
-     ENDPOINTS CON NOMBRE
+     ENDPOINTS DE ADMIN
+     ========================= */
+
+  // Dashboard
+  getDashboardStats() {
+    return this.get("/admin/dashboard/stats");
+  }
+
+  getDashboardActivity() {
+    return this.get("/admin/dashboard/activity");
+  }
+
+  // Estadísticas detalladas
+  getDetailedStats(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    return this.get(`/admin/stats/detailed${queryParams ? `?${queryParams}` : ''}`);
+  }
+
+  // Actividad detallada
+  getDetailedActivity(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    return this.get(`/admin/activity/detailed${queryParams ? `?${queryParams}` : ''}`);
+  }
+
+  // Usuarios
+  getUsers(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    return this.get(`/admin/users${queryParams ? `?${queryParams}` : ''}`);
+  }
+
+  // Usuario específico
+  getUser(id) {
+    return this.get(`/users/${id}`);
+  }
+
+  updateUser(id, data) {
+    return this.put(`/users/${id}`, data);
+  }
+
+  /* =========================
+     ENDPOINTS GENERALES
      ========================= */
 
   health() {
@@ -75,14 +103,6 @@ class ApiService {
 
   login(email, password) {
     return this.post("/auth/login", { email, password });
-  }
-
-  getUsers() {
-    return this.get("/users");
-  }
-
-  updateUser(id, payload) {
-    return this.put(`/users/${id}`, payload);
   }
 }
 

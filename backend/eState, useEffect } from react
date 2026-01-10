@@ -1,0 +1,23 @@
+              List of relations
+ Schema |      Name       | Type  |   Owner   
+--------+-----------------+-------+-----------
+ public | activity_count  | table | agro_user
+ public | activity_logs   | table | agro_user
+ public | certifications  | table | agro_user
+ public | favorites       | table | agro_user
+ public | lotes           | table | agro_user
+ public | market_prices   | table | agro_user
+ public | messages        | table | agro_user
+ public | notifications   | table | agro_user
+ public | offers          | table | agro_user
+ public | order_count     | table | agro_user
+ public | order_items     | table | postgres
+ public | orders          | table | postgres
+ public | products        | table | postgres
+ public | system_settings | table | agro_user
+ public | transactions    | table | agro_user
+ public | uploaded_files  | table | agro_user
+ public | user_activity   | table | postgres
+ public | users           | table | agro_user
+(18 rows)
+

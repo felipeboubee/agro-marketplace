@@ -5,6 +5,9 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const certificationRoutes = require('./routes/certificationRoutes');
+const adminRoutes = require('./routes/adminRoutes')
+const initAdminTables = require('../scripts/initAdminTables');
+const requestLogger = require('./middleware/requestLogger');
 
 dotenv.config();
 
@@ -24,6 +27,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/certifications', certificationRoutes);
+app.use('/api/admin', adminRoutes);
+app.use(requestLogger);
 
 // Ruta de prueba
 app.get('/api/health', (req, res) => {
@@ -76,4 +81,11 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor backend corriendo en puerto ${PORT}`);
   console.log(`🌐 Accesible desde: http://localhost:${PORT}`);
   console.log(`🔗 Frontend debería usar: http://localhost:5173`);
+});
+
+app.listen(PORT, async () => {
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  
+  // Inicializar tablas del admin dashboard
+  await initAdminTables();
 });

@@ -7,7 +7,8 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import BuyerDashboard from './components/comprador/BuyerDashboard';
 import SellerDashboard from './components/vendedor/SellerDashboard';
 import BankDashboard from './components/banco/BankDashboard';
-import AdminDashboard from './components/admin/AdminDashboard';
+// Cambia esto:
+import AdminLayout from './components/admin/AdminLayout'; // Nuevo componente de layout
 
 function App() {
   return (
@@ -37,9 +38,10 @@ function App() {
           </ProtectedRoute>
         } />
         
+        {/* CAMBIA ESTA RUTA ADMIN: */}
         <Route path="/admin/*" element={
           <ProtectedRoute allowedRoles={['admin']}>
-            <AdminDashboard />
+            <AdminLayout />
           </ProtectedRoute>
         } />
         
