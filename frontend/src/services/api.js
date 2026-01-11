@@ -9,14 +9,17 @@ class ApiService {
   async request(endpoint, { method = "GET", body, headers = {} } = {}) {
     const token = localStorage.getItem("token");
 
+    // Determinar si body es FormData
+    const isFormData = body instanceof FormData;
+    
     const res = await fetch(`${this.baseURL}${endpoint}`, {
       method,
       headers: {
-        "Content-Type": "application/json",
+        ...(!isFormData && { "Content-Type": "application/json" }),
         ...(token && { Authorization: `Bearer ${token}` }),
         ...headers
       },
-      ...(body && { body: JSON.stringify(body) })
+      ...(body && { body: isFormData ? body : JSON.stringify(body) })
     });
 
     if (!res.ok) {
@@ -93,6 +96,82 @@ class ApiService {
     return this.put(`/users/${id}`, data);
   }
 
+  getUserActivity(userId) {
+    return this.get(`/users/${userId}/activity`);
+  }
+
+  /* =========================
+     ENDPOINTS DE LOTES
+     ========================= */
+
+  getLotes(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    return this.get(`/lotes${queryParams ? `?${queryParams}` : ''}`);
+  }
+
+  getLote(id) {
+    return this.get(`/lotes/${id}`);
+  }
+
+  createLote(data) {
+    return this.post('/lotes', data);
+  }
+
+  updateLote(id, data) {
+    return this.put(`/lotes/${id}`, data);
+  }
+
+  deleteLote(id) {
+    return this.delete(`/lotes/${id}`);
+  }
+
+  getSellerLotes() {
+    return this.get('/lotes/seller');
+  }
+
+  /* =========================
+     ENDPOINTS DE CERTIFICACIONES
+     ========================= */
+
+  applyCertification(data) {
+    return this.post('/certifications/apply', data);
+  }
+
+  getMyCertifications() {
+    return this.get('/certifications/my');
+  }
+
+  getCertifications(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    return this.get(`/certifications${queryParams ? `?${queryParams}` : ''}`);
+  }
+
+  getBankCertifications(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    return this.get(`/certifications/bank/all${queryParams ? `?${queryParams}` : ''}`);
+  }
+
+  updateCertificationStatus(id, status, notes = '') {
+    return this.put(`/certifications/${id}/status`, { status, notes });
+  }
+
+  /* =========================
+     ENDPOINTS DE TRANSACCIONES
+     ========================= */
+
+  getTransactions(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    return this.get(`/transactions${queryParams ? `?${queryParams}` : ''}`);
+  }
+
+  createTransaction(data) {
+    return this.post('/transactions', data);
+  }
+
+  updateTransactionStatus(id, status) {
+    return this.put(`/transactions/${id}/status`, { status });
+  }
+
   /* =========================
      ENDPOINTS GENERALES
      ========================= */
@@ -103,6 +182,14 @@ class ApiService {
 
   login(email, password) {
     return this.post("/auth/login", { email, password });
+  }
+
+  updateProfile(data) {
+    return this.put('/users/profile', data);
+  }
+
+  changePassword(currentPassword, newPassword) {
+    return this.post('/auth/change-password', { currentPassword, newPassword });
   }
 }
 

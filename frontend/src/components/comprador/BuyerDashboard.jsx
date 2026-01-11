@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import LoteList from '../comprador/LoteList';
 import CertificationForm from '../comprador/CertificationForm';
-import { ShoppingCart, Plus, FileText, List } from 'lucide-react';
+import ProfileSettings from '../common/ProfileSettings';
+import { ShoppingCart, Plus, FileText, List, Settings } from 'lucide-react';
 import '../../styles/dashboard.css';
 
 const BuyerDashboard = () => {
@@ -54,6 +55,15 @@ const BuyerDashboard = () => {
               >
                 <FileText size={20} />
                 <span>Certificación</span>
+              </button>
+            </li>
+            <li>
+              <button 
+                className="nav-item"
+                onClick={() => navigateTo('/comprador/configuracion')}
+              >
+                <Settings size={20} />
+                <span>Configuración</span>
               </button>
             </li>
           </ul>
@@ -130,6 +140,7 @@ const BuyerDashboard = () => {
             <Route path="/" element={<BuyerDashboardHome />} />
             <Route path="/lotes" element={<LoteList />} />
             <Route path="/certificacion" element={<CertificationForm />} />
+            <Route path="/configuracion" element={<ProfileSettings user={user} />} />
           </Routes>
         </div>
       </main>

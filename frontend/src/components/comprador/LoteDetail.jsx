@@ -33,19 +33,18 @@ const LoteDetail = () => {
 
   const fetchLoteDetails = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await api.get(`/lotes/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.getLote(id);
       
-      setLote(response.data);
+      setLote(response);
       
       // Verificar si es favorito
       if (user) {
-        const favResponse = await api.get(`/favorites/check/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setIsFavorite(favResponse.data.isFavorite);
+        try {
+          const favResponse = await api.get(`/favorites/check/${id}`);
+          setIsFavorite(favResponse?.isFavorite || false);
+        } catch (e) {
+          console.log('Favorites not available yet');
+        }
       }
       
       setLoading(false);

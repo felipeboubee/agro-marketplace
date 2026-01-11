@@ -1,8 +1,10 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const loteRoutes = require('./routes/loteRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const certificationRoutes = require('./routes/certificationRoutes');
 const adminRoutes = require('./routes/adminRoutes')
@@ -13,7 +15,6 @@ dotenv.config();
 
 const app = express();
 
-
 // Middleware
 app.use(cors({
   origin: "http://localhost:5173",
@@ -22,9 +23,14 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Servir archivos estáticos para uploads
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads/certifications', express.static(path.join(__dirname, '../uploads/certifications')));
+
 // Rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/lotes', loteRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/certifications', certificationRoutes);
 app.use('/api/admin', adminRoutes);

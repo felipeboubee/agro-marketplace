@@ -87,6 +87,77 @@ const authController = {
       console.error('Error en login:', error);
       res.status(500).json({ error: 'Error interno del servidor' });
     }
+  },
+
+  async changePassword(req, res) {
+    try {
+      const userId = req.userId;
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Contraseñas requeridas' });
+      }
+
+      // Buscar usuario
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
+      }
+
+      // Verificar contraseña actual
+      const isValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isValid) {
+        return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+      }
+
+      // Hash de la nueva contraseña
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Actualizar contraseña
+      await User.update(userId, { password: hashedPassword });
+
+      res.json({ message: 'Contraseña cambiada exitosamente' });
+    } catch (error) {
+      console.error('Error al cambiar contraseña:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  },
+
+  async updateProfile(req, res) {
+    try {
+      const userId = req.userId;
+      const { name, email, phone, location } = req.body;
+
+      // Buscar usuario
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
+      }
+
+      // Si el email cambió, verificar que no exista otro usuario con ese email
+      if (email && email !== user.email) {
+        const existingUser = await User.findByEmail(email);
+        if (existingUser) {
+          return res.status(400).json({ error: 'El email ya está en uso' });
+        }
+      }
+
+      // Actualizar perfil
+      const updatedUser = await User.update(userId, {
+        name: name || user.name,
+        email: email || user.email,
+        phone: phone || user.phone,
+        location: location || user.location
+      });
+
+      res.json({
+        message: 'Perfil actualizado exitosamente',
+        user: updatedUser
+      });
+    } catch (error) {
+      console.error('Error al actualizar perfil:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
   }
 };
 

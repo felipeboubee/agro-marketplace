@@ -90,23 +90,22 @@ exports.getActivity = async (req, res) => {
     
     let activities = [];
     
-    try {
-      const result = await pool.query(`
-        SELECT 
-          ua.*,
-          u.name as user_name,
-          u.email as user_email
-        FROM user_activity ua
-        LEFT JOIN users u ON u.id = ua.user_id
-        ORDER BY ua.created_at DESC
-        LIMIT $1
-      `, [limit]);
-      
-      activities = result.rows;
-    } catch (error) {
-      // Si la tabla no existe o hay error, usar usuarios como actividad
-      console.log('Usando usuarios como actividad:', error.message);
-      
+    // Try to get activities from user_activity table
+    const result = await pool.query(`
+      SELECT 
+        ua.*,
+        u.name as user_name,
+        u.email as user_email
+      FROM user_activity ua
+      LEFT JOIN users u ON u.id = ua.user_id
+      ORDER BY ua.created_at DESC
+      LIMIT $1
+    `, [limit]);
+    
+    activities = result.rows;
+    
+    // If no activities, generate demo data from users
+    if (activities.length === 0) {
       const usersResult = await pool.query(`
         SELECT 
           id,
@@ -121,15 +120,11 @@ exports.getActivity = async (req, res) => {
       `, [limit]);
       
       activities = usersResult.rows.map(user => ({
+        ...user,
         id: user.id,
         user_id: user.id,
-        user_name: user.user_name,
-        user_email: user.user_email,
-        activity_type: user.activity_type,
-        description: user.description,
-        created_at: user.created_at,
-        ip_address: null,
-        user_agent: null
+        activity_type: 'user_registration',
+        description: 'Usuario registrado en el sistema'
       }));
     }
 

@@ -5,10 +5,9 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import BuyerDashboard from './components/comprador/BuyerDashboard';
-import SellerDashboard from './components/vendedor/SellerDashboard';
+import SellerLayout from './components/vendedor/SellerLayout';
 import BankDashboard from './components/banco/BankDashboard';
-// Cambia esto:
-import AdminLayout from './components/admin/AdminLayout'; // Nuevo componente de layout
+import AdminLayout from './components/admin/AdminLayout';
 
 function App() {
   return (
@@ -28,7 +27,7 @@ function App() {
         
         <Route path="/vendedor/*" element={
           <ProtectedRoute allowedRoles={['vendedor']}>
-            <SellerDashboard />
+            <SellerLayout />
           </ProtectedRoute>
         } />
         

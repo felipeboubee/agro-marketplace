@@ -7,7 +7,7 @@ const certificationController = {
   async applyForCertification(req, res) {
     try {
       const user_id = req.userId;
-      const { bank_name, financial_data } = req.body;
+      const { bank_name, personal_info, employment_info, financial_info } = req.body;
 
       // Validar que el usuario es comprador
       const user = await User.findById(user_id);
@@ -18,7 +18,7 @@ const certificationController = {
       // Verificar si ya tiene una solicitud pendiente con este banco
       const existingCert = await pool.query(
         `SELECT * FROM certifications 
-         WHERE user_id = $1 AND bank_name = $2 AND status = 'pendiente'`,
+         WHERE user_id = $1 AND bank_name = $2 AND status = 'pendiente_aprobacion'`,
         [user_id, bank_name]
       );
 
@@ -42,21 +42,27 @@ const certificationController = {
         });
       }
 
-      // Crear la certificación
+      // Preparar datos de certificación
+      let income_proof_path = null;
+      if (req.file) {
+        income_proof_path = `/uploads/certifications/${req.file.filename}`;
+      }
+
+      // Crear la certificación con nuevo formato
       const certification = await Certification.create({
         user_id,
         bank_name,
-        financial_data,
-        status: 'pendiente'
+        personal_info: personal_info ? JSON.parse(personal_info) : {},
+        employment_info: employment_info ? JSON.parse(employment_info) : {},
+        financial_info: financial_info ? JSON.parse(financial_info) : {},
+        income_proof_path,
+        status: 'pendiente_aprobacion'
       });
 
-      // Crear notificación para el banco
+      // Actualizar estado del comprador a pendiente_aprobacion
       await pool.query(
-        `INSERT INTO notifications (user_id, type, title, message, data)
-         SELECT id, 'new_certification', 'Nueva solicitud de certificación', 
-                'El usuario ${user.name} ha solicitado certificación', 
-                '{"certification_id": ${certification.id}}'::jsonb
-         FROM users WHERE user_type = 'banco' AND email LIKE '%${bank_name}%'`
+        `UPDATE users SET buyer_status = 'pendiente_aprobacion' WHERE id = $1`,
+        [user_id]
       );
 
       res.status(201).json({

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import CertificationRequests from './CertificationRequests';
-import { CheckCircle, Clock, DollarSign, Users } from 'lucide-react';
+import ProfileSettings from '../common/ProfileSettings';
+import { CheckCircle, Clock, DollarSign, Users, Settings } from 'lucide-react';
 import '../../styles/dashboard.css';
 
 const BankDashboard = () => {
@@ -45,6 +46,15 @@ const BankDashboard = () => {
               >
                 <Clock size={20} />
                 <span>Solicitudes</span>
+              </button>
+            </li>
+            <li>
+              <button 
+                className="nav-item"
+                onClick={() => navigateTo('/banco/configuracion')}
+              >
+                <Settings size={20} />
+                <span>Configuración</span>
               </button>
             </li>
           </ul>
@@ -120,6 +130,7 @@ const BankDashboard = () => {
           <Routes>
             <Route path="/" element={<BankDashboardHome stats={stats} />} />
             <Route path="/solicitudes" element={<CertificationRequests />} />
+            <Route path="/configuracion" element={<ProfileSettings user={user} />} />
           </Routes>
         </div>
       </main>

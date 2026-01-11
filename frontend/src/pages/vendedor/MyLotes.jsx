@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api } from "../../services/api";
 import '../../styles/forms.css';
 
-const MyLotes = () => {
+export default function MyLotes() {
   const [lotes, setLotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -11,45 +11,22 @@ const MyLotes = () => {
     sort_by: 'created_at',
     sort_order: 'desc'
   });
-  const [stats, setStats] = useState({
-    total: 0,
-    ofertado: 0,
-    completo: 0,
-    cancelado: 0
-  });
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    fetchMyLotes();
-  }, []);
-
-  useEffect(() => {
-    calculateStats();
-  }, [lotes]);
 
   const fetchMyLotes = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await api.get('/lotes/seller', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setLotes(response.data);
+      const response = await api.getSellerLotes();
+      setLotes(Array.isArray(response) ? response : []);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching my lotes:', error);
+      setLotes([]);
       setLoading(false);
     }
   };
 
-  const calculateStats = () => {
-    const stats = {
-      total: lotes.length,
-      ofertado: lotes.filter(l => l.status === 'ofertado').length,
-      completo: lotes.filter(l => l.status === 'completo').length,
-      cancelado: lotes.filter(l => l.status === 'cancelado').length
-    };
-    setStats(stats);
-  };
+  useEffect(() => {
+    fetchMyLotes();
+  }, []);
 
   const filteredLotes = lotes.filter(lote => {
     if (filters.status === 'all') return true;
@@ -69,13 +46,8 @@ const MyLotes = () => {
     if (!window.confirm(`¿Cambiar estado a "${newStatus}"?`)) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await api.put(`/lotes/${loteId}`, 
-        { status: newStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.updateLote(loteId, { status: newStatus });
       
-      // Actualizar lista localmente
       setLotes(lotes.map(lote => 
         lote.id === loteId ? { ...lote, status: newStatus } : lote
       ));
@@ -91,14 +63,8 @@ const MyLotes = () => {
     if (!window.confirm('¿Estás seguro de eliminar este lote? Esta acción no se puede deshacer.')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await api.delete(`/lotes/${loteId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      // Eliminar de la lista localmente
+      await api.deleteLote(loteId);
       setLotes(lotes.filter(lote => lote.id !== loteId));
-      
       alert('Lote eliminado exitosamente');
     } catch (error) {
       console.error('Error deleting lote:', error);
@@ -133,48 +99,12 @@ const MyLotes = () => {
           <p>Gestiona todas tus publicaciones</p>
         </div>
         <div className="header-actions">
-          <Link to="/vendedor/crear-lote" className="btn btn-primary">
+          <Link to="/vendedor/crear" className="btn btn-primary">
             <span>+</span> Crear Nuevo Lote
           </Link>
         </div>
       </div>
 
-      {/* Estadísticas */}
-      <div className="stats-cards">
-        <div className="stat-card">
-          <div className="stat-icon">📊</div>
-          <div className="stat-content">
-            <h3>{stats.total}</h3>
-            <p>Total Lotes</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">🔥</div>
-          <div className="stat-content">
-            <h3>{stats.ofertado}</h3>
-            <p>Activos</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">✓</div>
-          <div className="stat-content">
-            <h3>{stats.completo}</h3>
-            <p>Completados</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">✗</div>
-          <div className="stat-content">
-            <h3>{stats.cancelado}</h3>
-            <p>Cancelados</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Filtros y Controles */}
       <div className="controls-bar">
         <div className="filters">
           <select 
@@ -205,18 +135,8 @@ const MyLotes = () => {
             {filters.sort_order === 'desc' ? 'Descendente ↑' : 'Ascendente ↓'}
           </button>
         </div>
-
-        <div className="export-options">
-          <button className="btn btn-outline">
-            📥 Exportar CSV
-          </button>
-          <button className="btn btn-outline">
-            🖨️ Imprimir Lista
-          </button>
-        </div>
       </div>
 
-      {/* Tabla de Lotes */}
       <div className="lotes-table-container">
         <table className="lotes-table">
           <thead>
@@ -259,13 +179,6 @@ const MyLotes = () => {
                     >
                       👁️
                     </Link>
-                    <Link 
-                      to={`/vendedor/editar-lote/${lote.id}`}
-                      className="btn btn-small btn-outline"
-                      title="Editar"
-                    >
-                      ✏️
-                    </Link>
                     <select 
                       value={lote.status}
                       onChange={(e) => handleStatusChange(lote.id, e.target.value)}
@@ -290,7 +203,6 @@ const MyLotes = () => {
         </table>
       </div>
 
-      {/* Vista de Tarjetas (Responsive) */}
       <div className="lotes-cards">
         {filteredLotes.map((lote) => (
           <div key={lote.id} className="lote-card-mobile">
@@ -334,12 +246,6 @@ const MyLotes = () => {
               >
                 Ver
               </Link>
-              <Link 
-                to={`/vendedor/editar-lote/${lote.id}`}
-                className="btn btn-small btn-outline"
-              >
-                Editar
-              </Link>
               <select 
                 value={lote.status}
                 onChange={(e) => handleStatusChange(lote.id, e.target.value)}
@@ -356,16 +262,14 @@ const MyLotes = () => {
 
       {filteredLotes.length === 0 && (
         <div className="empty-state">
-          <div className="empty-icon">📋</div>
-          <h3>No tienes lotes publicados</h3>
-          <p>Crea tu primer lote para comenzar a vender</p>
-          <Link to="/vendedor/crear-lote" className="btn btn-primary">
-            Crear Primer Lote
+          <div className="empty-icon">📦</div>
+          <h3>No hay lotes publicados</h3>
+          <p>Comienza creando tu primer lote</p>
+          <Link to="/vendedor/crear" className="btn btn-primary">
+            Crear Lote
           </Link>
         </div>
       )}
     </div>
   );
-};
-
-export default MyLotes;
+}

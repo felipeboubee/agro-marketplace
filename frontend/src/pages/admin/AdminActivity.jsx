@@ -21,7 +21,7 @@ import "../../styles/dashboard.css";
 
 export default function AdminActivity() {
   const [activities, setActivities] = useState([]);
-  const [filters, setFilters] = useState({
+  const [currentFilters, setCurrentFilters] = useState({
     page: 1,
     limit: 20,
     activity_type: "",
@@ -35,11 +35,12 @@ export default function AdminActivity() {
   const [loading, setLoading] = useState(true);
   const debounceTimerRef = useRef(null);
 
-  const loadActivities = useCallback(async () => {
+  // Función para cargar actividades - sin dependencias de filters
+  const fetchActivities = useCallback(async (filterParams) => {
     try {
       setLoading(true);
-      console.log("Fetching activities with filters:", filters);
-      const data = await api.getDetailedActivity(filters);
+      console.log("Fetching activities with filters:", filterParams);
+      const data = await api.getDetailedActivity(filterParams);
       console.log("Activities data received:", data);
       setActivities(data.activities);
       setPagination(data.pagination);
@@ -50,43 +51,56 @@ export default function AdminActivity() {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, []);
 
+  // Cargar actividades iniciales
   useEffect(() => {
-    loadActivities();
-  }, [loadActivities]);
+    fetchActivities(currentFilters);
+  }, [currentFilters, fetchActivities]);
 
   const handleFilterChange = (key, value) => {
     // Para cambios inmediatos (selects y dates)
     if (key === 'activity_type' || key === 'start_date' || key === 'end_date' || key === 'page') {
-      setFilters(prev => ({ ...prev, [key]: value, page: key === 'page' ? value : 1 }));
+      const newFilters = { ...currentFilters, [key]: value };
+      if (key !== 'page') {
+        newFilters.page = 1;
+      }
+      setCurrentFilters(newFilters);
     } else if (key === 'user_id') {
       // Actualizar el input local inmediatamente
       setUserIdInput(value);
       
-      // Para entrada de texto, usar debounce
+      // Clear any existing debounce timer
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
+      
+      // Set new debounce timer (500ms)
       debounceTimerRef.current = setTimeout(() => {
-        setFilters(prev => ({ ...prev, user_id: value, page: 1 }));
+        const newFilters = { ...currentFilters, user_id: value, page: 1 };
+        setCurrentFilters(newFilters);
       }, 500);
     }
   };
 
   const handlePageChange = (newPage) => {
-    setFilters(prev => ({ ...prev, page: newPage }));
+    handleFilterChange('page', newPage);
+  };
+
+  const handleRefresh = () => {
+    fetchActivities(currentFilters);
   };
 
   const resetFilters = () => {
-    setFilters({
+    const newFilters = {
       page: 1,
       limit: 20,
       activity_type: "",
       user_id: "",
       start_date: "",
       end_date: ""
-    });
+    };
+    setCurrentFilters(newFilters);
     setUserIdInput("");
   };
 
@@ -126,7 +140,7 @@ export default function AdminActivity() {
     }
   };
 
-  if (loading && filters.page === 1) {
+  if (loading && currentFilters.page === 1) {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
@@ -144,7 +158,7 @@ export default function AdminActivity() {
         </h1>
         <button 
           className="btn btn-secondary"
-          onClick={() => loadActivities()}
+          onClick={handleRefresh}
           disabled={loading}
         >
           <RefreshCw size={20} className={loading ? "spin" : ""} />
@@ -172,7 +186,7 @@ export default function AdminActivity() {
               Tipo de Actividad
             </label>
             <select 
-              value={filters.activity_type}
+              value={currentFilters.activity_type}
               onChange={(e) => handleFilterChange('activity_type', e.target.value)}
               className="select-input"
             >
@@ -210,9 +224,9 @@ export default function AdminActivity() {
             </label>
             <input 
               type="date"
-              value={filters.start_date}
+              value={currentFilters.start_date}
               onChange={(e) => handleFilterChange('start_date', e.target.value)}
-              className="input"
+              className="input-field"
             />
           </div>
 
@@ -223,9 +237,9 @@ export default function AdminActivity() {
             </label>
             <input 
               type="date"
-              value={filters.end_date}
+              value={currentFilters.end_date}
               onChange={(e) => handleFilterChange('end_date', e.target.value)}
-              className="input"
+              className="input-field"
             />
           </div>
         </div>
@@ -263,8 +277,8 @@ export default function AdminActivity() {
           <div className="results-info">
             {activities.length > 0 && (
               <>
-                Mostrando {(filters.page - 1) * filters.limit + 1} - 
-                {Math.min(filters.page * filters.limit, pagination.total || 0)} de {pagination.total || 0}
+                Mostrando {(currentFilters.page - 1) * currentFilters.limit + 1} - 
+                {Math.min(currentFilters.page * currentFilters.limit, pagination.total || 0)} de {pagination.total || 0}
               </>
             )}
           </div>
@@ -342,8 +356,8 @@ export default function AdminActivity() {
               <div className="pagination">
                 <button 
                   className="pagination-btn"
-                  onClick={() => handlePageChange(filters.page - 1)}
-                  disabled={filters.page === 1}
+                  onClick={() => handlePageChange(currentFilters.page - 1)}
+                  disabled={currentFilters.page === 1}
                 >
                   ← Anterior
                 </button>
@@ -353,18 +367,18 @@ export default function AdminActivity() {
                     let pageNum;
                     if (pagination.totalPages <= 5) {
                       pageNum = i + 1;
-                    } else if (filters.page <= 3) {
+                    } else if (currentFilters.page <= 3) {
                       pageNum = i + 1;
-                    } else if (filters.page >= pagination.totalPages - 2) {
+                    } else if (currentFilters.page >= pagination.totalPages - 2) {
                       pageNum = pagination.totalPages - 4 + i;
                     } else {
-                      pageNum = filters.page - 2 + i;
+                      pageNum = currentFilters.page - 2 + i;
                     }
 
                     return (
                       <button
                         key={pageNum}
-                        className={`pagination-page ${filters.page === pageNum ? 'active' : ''}`}
+                        className={`pagination-page ${currentFilters.page === pageNum ? 'active' : ''}`}
                         onClick={() => handlePageChange(pageNum)}
                       >
                         {pageNum}
@@ -375,8 +389,8 @@ export default function AdminActivity() {
 
                 <button 
                   className="pagination-btn"
-                  onClick={() => handlePageChange(filters.page + 1)}
-                  disabled={filters.page === pagination.totalPages}
+                  onClick={() => handlePageChange(currentFilters.page + 1)}
+                  disabled={currentFilters.page === pagination.totalPages}
                 >
                   Siguiente →
                 </button>

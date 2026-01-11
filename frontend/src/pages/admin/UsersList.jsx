@@ -62,6 +62,40 @@ export default function UsersList() {
     }
   };
 
+  const updateUserInfo = async (userId, data) => {
+    try {
+      await api.updateUser(userId, data);
+      alert('Usuario actualizado correctamente');
+      loadUsers();
+    } catch (error) {
+      console.error("Error updating user:", error);
+      alert('Error al actualizar usuario');
+    }
+  };
+
+  const loadUserActivity = async (userId) => {
+    try {
+      const activity = await api.getUserActivity(userId);
+      const activities = Array.isArray(activity) ? activity : [activity];
+      alert(`${activities.length} registros de actividad encontrados`);
+      console.log('User activity:', activities);
+    } catch (error) {
+      console.error("Error loading user activity:", error);
+      alert('Error al cargar historial');
+    }
+  };
+
+  const deleteUser = async (userId) => {
+    try {
+      await api.delete(`/users/${userId}`);
+      alert('Usuario eliminado correctamente');
+      loadUsers();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      alert('Error al eliminar usuario');
+    }
+  };
+
   const userStats = [
     {
       title: "Total Usuarios",
@@ -262,20 +296,25 @@ export default function UsersList() {
                           {openMenuId === user.id && (
                             <div className="menu-dropdown">
                               <button onClick={() => {
+                                setOpenMenuId(null);
                                 window.location.href = `/admin/users/${user.id}`;
                               }}>Ver Detalles</button>
                               <button onClick={() => {
-                                // Editar usuario
-                                alert(`Editar usuario ${user.name}`);
+                                setOpenMenuId(null);
+                                const newName = prompt('Nuevo nombre:', user.name);
+                                if (newName) {
+                                  updateUserInfo(user.id, { name: newName });
+                                }
                               }}>Editar</button>
                               <button onClick={() => {
-                                // Ver historial
-                                alert(`Historial de ${user.name}`);
+                                setOpenMenuId(null);
+                                loadUserActivity(user.id);
                               }}>Ver Historial</button>
                               <hr style={{margin: '4px 0'}} />
                               <button style={{color: '#ef4444'}} onClick={() => {
                                 if (window.confirm(`¿Eliminar usuario ${user.name}?`)) {
-                                  alert('Eliminando usuario...');
+                                  deleteUser(user.id);
+                                  setOpenMenuId(null);
                                 }
                               }}>Eliminar</button>
                             </div>

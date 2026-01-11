@@ -38,11 +38,6 @@ router.post('/',
   loteController.createLote
 );
 
-// @route   GET /api/lotes
-// @desc    Get all lotes
-// @access  Private
-router.get('/', auth, loteController.getAllLotes);
-
 // @route   GET /api/lotes/seller
 // @desc    Get seller's lotes
 // @access  Private/Vendedor
@@ -52,6 +47,11 @@ router.get('/seller', auth, roleCheck('vendedor'), loteController.getSellerLotes
 // @desc    Get lote by ID
 // @access  Private
 router.get('/:id', auth, loteController.getLoteById);
+
+// @route   GET /api/lotes
+// @desc    Get all lotes
+// @access  Private
+router.get('/', auth, loteController.getAllLotes);
 
 // @route   PUT /api/lotes/:id
 // @desc    Update lote

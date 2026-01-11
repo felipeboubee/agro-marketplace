@@ -9,9 +9,13 @@ const loteController = {
         ...req.body
       };
 
+      // Log para debugging
+      console.log("Lote creation request body:", req.body);
+      console.log("Files received:", req.files);
+
       // Procesar archivos subidos
       if (req.files && req.files.length > 0) {
-        loteData.photos = req.files.map(file => file.filename);
+        loteData.photos = req.files.map(file => `/uploads/${file.filename}`);
       }
 
       const lote = await Lote.create(loteData);
@@ -22,7 +26,7 @@ const loteController = {
       });
     } catch (error) {
       console.error('Error creating lote:', error);
-      res.status(500).json({ error: 'Error al crear el lote' });
+      res.status(500).json({ error: 'Error al crear el lote', details: error.message });
     }
   },
 
@@ -94,6 +98,60 @@ const loteController = {
     } catch (error) {
       console.error('Error fetching lotes:', error);
       res.status(500).json({ error: 'Error al obtener los lotes' });
+    }
+  },
+
+  async getLoteById(req, res) {
+    try {
+      const { id } = req.params;
+      const lote = await Lote.findById(id);
+      
+      if (!lote) {
+        return res.status(404).json({ error: 'Lote no encontrado' });
+      }
+      
+      res.json(lote);
+    } catch (error) {
+      console.error('Error fetching lote:', error);
+      res.status(500).json({ error: 'Error al obtener el lote' });
+    }
+  },
+
+  async updateLote(req, res) {
+    try {
+      const { id } = req.params;
+      const seller_id = req.userId;
+      
+      // Verify ownership
+      const lote = await Lote.findById(id);
+      if (!lote || lote.seller_id !== seller_id) {
+        return res.status(403).json({ error: 'No tienes permiso para actualizar este lote' });
+      }
+      
+      const updatedLote = await Lote.update(id, req.body);
+      res.json({ message: 'Lote actualizado exitosamente', lote: updatedLote });
+    } catch (error) {
+      console.error('Error updating lote:', error);
+      res.status(500).json({ error: 'Error al actualizar el lote' });
+    }
+  },
+
+  async deleteLote(req, res) {
+    try {
+      const { id } = req.params;
+      const seller_id = req.userId;
+      
+      // Verify ownership
+      const lote = await Lote.findById(id);
+      if (!lote || lote.seller_id !== seller_id) {
+        return res.status(403).json({ error: 'No tienes permiso para eliminar este lote' });
+      }
+      
+      await Lote.delete(id);
+      res.json({ message: 'Lote eliminado exitosamente' });
+    } catch (error) {
+      console.error('Error deleting lote:', error);
+      res.status(500).json({ error: 'Error al eliminar el lote' });
     }
   }
 };

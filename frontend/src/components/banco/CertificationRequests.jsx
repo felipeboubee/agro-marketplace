@@ -34,13 +34,10 @@ const CertificationRequests = () => {
 
   const fetchCertificationRequests = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await api.get('/certifications/bank/all', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.getBankCertifications();
       
-      setRequests(response.data);
-      calculateStats(response.data);
+      setRequests(response);
+      calculateStats(response);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching certification requests:', error);

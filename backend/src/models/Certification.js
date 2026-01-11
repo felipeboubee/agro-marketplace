@@ -5,17 +5,37 @@ const Certification = {
     const {
       user_id,
       bank_name,
-      financial_data,
+      personal_info,
+      employment_info,
+      financial_info,
+      income_proof_path,
       status
     } = certificationData;
 
     const query = `
-      INSERT INTO certifications (user_id, bank_name, financial_data, status, created_at)
-      VALUES ($1, $2, $3, $4, NOW())
+      INSERT INTO certifications (
+        user_id, 
+        bank_name, 
+        personal_info,
+        employment_info, 
+        financial_info,
+        income_proof_path,
+        status, 
+        created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
       RETURNING *
     `;
     
-    const values = [user_id, bank_name, financial_data, status];
+    const values = [
+      user_id, 
+      bank_name, 
+      JSON.stringify(personal_info),
+      JSON.stringify(employment_info),
+      JSON.stringify(financial_info),
+      income_proof_path,
+      status
+    ];
     const { rows } = await pool.query(query, values);
     return rows[0];
   },

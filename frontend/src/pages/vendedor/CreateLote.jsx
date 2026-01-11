@@ -119,8 +119,6 @@ const CreateLote = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      
       // Crear FormData para enviar archivos
       const formDataToSend = new FormData();
       Object.keys(formData).forEach(key => {
@@ -133,15 +131,10 @@ const CreateLote = () => {
         }
       });
 
-      const response = await api.post('/lotes', formDataToSend, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
+      const response = await api.createLote(formDataToSend);
+      
       // Redirigir a la página del lote creado
-      navigate(`/vendedor/lote/${response.data.lote.id}`);
+      navigate(`/vendedor/lote/${response.lote.id}`);
     } catch (error) {
       console.error('Error creating lote:', error);
       alert('Error al crear el lote. Por favor, intenta nuevamente.');

@@ -38,7 +38,7 @@ const Lote = {
     const values = [
       seller_id, location, city, province, animal_type, male_count, female_count,
       total_count, average_weight, breed, base_price, feeding_type,
-      video_url, photos ? JSON.stringify(photos) : null, description, 'ofertado'
+      video_url, photos && photos.length > 0 ? photos : null, description, 'ofertado'
     ];
     
     const { rows } = await pool.query(query, values);

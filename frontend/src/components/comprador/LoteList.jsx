@@ -286,25 +286,6 @@ const LoteList = () => {
                 <span className="lote-location">{lote.location}</span>
               </div>
               
-              <div className="lote-stats">
-                <div className="stat-item">
-                  <span className="stat-label">Cantidad:</span>
-                  <span className="stat-value">{lote.total_count} animales</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Peso promedio:</span>
-                  <span className="stat-value">{lote.average_weight} kg</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Precio base:</span>
-                  <span className="stat-value">${lote.base_price}/kg</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Tipo engorde:</span>
-                  <span className="stat-value">{lote.feeding_type}</span>
-                </div>
-              </div>
-              
               <div className="lote-actions">
                 <Link 
                   to={`/comprador/lote/${lote.id}`}
