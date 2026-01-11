@@ -56,7 +56,7 @@ router.get('/', auth, loteController.getAllLotes);
 // @route   PUT /api/lotes/:id
 // @desc    Update lote
 // @access  Private/Vendedor
-router.put('/:id', auth, roleCheck('vendedor'), loteController.updateLote);
+router.put('/:id', auth, roleCheck('vendedor'), upload.array('photos', 10), loteController.updateLote);
 
 // @route   DELETE /api/lotes/:id
 // @desc    Delete lote

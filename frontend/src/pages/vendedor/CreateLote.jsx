@@ -17,6 +17,7 @@ const CreateLote = () => {
     breed: '',
     base_price: '',
     feeding_type: 'engorde',
+    uniformity: 'uniformidad_media',
     video_url: '',
     photos: [],
     description: ''
@@ -156,6 +157,13 @@ const CreateLote = () => {
     { value: 'pastura', label: 'Pastura natural' },
     { value: 'mixto', label: 'Mixto' },
     { value: 'recría', label: 'Recría' }
+  ];
+
+  const uniformityOptions = [
+    { value: 'poco_uniforme', label: 'Poco uniforme' },
+    { value: 'uniformidad_media', label: 'Uniformidad media' },
+    { value: 'bastante_uniforme', label: 'Bastante uniforme' },
+    { value: 'completamente_uniforme', label: 'Completamente uniforme' }
   ];
 
   return (
@@ -364,6 +372,22 @@ const CreateLote = () => {
                 {feedingTypes.map(type => (
                   <option key={type.value} value={type.value}>
                     {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="uniformity">Uniformidad del Lote</label>
+              <select
+                id="uniformity"
+                name="uniformity"
+                value={formData.uniformity}
+                onChange={handleChange}
+              >
+                {uniformityOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>

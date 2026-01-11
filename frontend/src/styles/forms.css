@@ -1220,3 +1220,125 @@
     font-size: var(--font-size-xl);
   }
 }
+
+/* Edit Mode Styles for LoteDetail */
+.edit-input {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--dark-color);
+  background: var(--white);
+  transition: all 0.3s ease;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-lighter);
+}
+
+.edit-textarea {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-md);
+  font-family: inherit;
+  color: var(--dark-color);
+  background: var(--white);
+  resize: vertical;
+  min-height: 100px;
+  transition: all 0.3s ease;
+}
+
+.edit-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-lighter);
+}
+
+/* Photo Management in Edit Mode */
+.photo-upload-section {
+  background: var(--primary-lighter);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+  border: 2px dashed var(--primary-color);
+}
+
+.photo-upload-section h3 {
+  color: var(--primary-color);
+  margin-bottom: var(--spacing-md);
+}
+
+.file-input {
+  display: none;
+}
+
+.file-input + label {
+  display: inline-block;
+  margin-top: var(--spacing-sm);
+  cursor: pointer;
+}
+
+.help-text {
+  margin-top: var(--spacing-sm);
+  color: var(--gray);
+  font-size: var(--font-size-sm);
+}
+
+.thumbnail-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.remove-photo-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--danger-color);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.thumbnail-wrapper:hover .remove-photo-btn {
+  opacity: 1;
+}
+
+.remove-photo-btn:hover {
+  background: #d63031;
+  transform: scale(1.1);
+}
+
+.video-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.video-edit label {
+  font-weight: 600;
+  color: var(--dark-color);
+}
+
+.video-preview {
+  width: 100%;
+  border-radius: var(--border-radius);
+  margin-top: var(--spacing-sm);
+}

@@ -128,11 +128,42 @@ const loteController = {
         return res.status(403).json({ error: 'No tienes permiso para actualizar este lote' });
       }
       
-      const updatedLote = await Lote.update(id, req.body);
+      const updateData = { ...req.body };
+      
+      // Manejar fotos si hay cambios
+      if (req.files && req.files.length > 0) {
+        // Obtener fotos existentes que se mantienen
+        let existingPhotos = [];
+        if (req.body.existing_photos) {
+          try {
+            existingPhotos = JSON.parse(req.body.existing_photos);
+          } catch (e) {
+            console.error('Error parsing existing_photos:', e);
+          }
+        }
+        
+        // Agregar nuevas fotos
+        const newPhotos = req.files.map(file => `/uploads/${file.filename}`);
+        updateData.photos = [...existingPhotos, ...newPhotos];
+      } else if (req.body.existing_photos) {
+        // Solo actualizar con fotos existentes (se eliminaron algunas)
+        try {
+          updateData.photos = JSON.parse(req.body.existing_photos);
+        } catch (e) {
+          console.error('Error parsing existing_photos:', e);
+        }
+      }
+      
+      // Eliminar existing_photos del objeto de actualización (no es una columna)
+      delete updateData.existing_photos;
+      
+      console.log('Update data:', updateData);
+      
+      const updatedLote = await Lote.update(id, updateData);
       res.json({ message: 'Lote actualizado exitosamente', lote: updatedLote });
     } catch (error) {
       console.error('Error updating lote:', error);
-      res.status(500).json({ error: 'Error al actualizar el lote' });
+      res.status(500).json({ error: 'Error al actualizar el lote', details: error.message });
     }
   },
 

@@ -11,12 +11,47 @@ export default function LoteDetail() {
   const [lote, setLote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [newPhotos, setNewPhotos] = useState([]);
+  const [photoURLs, setPhotoURLs] = useState([]);
+  const [photosToKeep, setPhotosToKeep] = useState([]); // URLs de fotos existentes que se mantienen
+  const [newVideoURL, setNewVideoURL] = useState('');
+
+  const uniformityOptions = [
+    { value: 'poco_uniforme', label: 'Poco uniforme' },
+    { value: 'uniformidad_media', label: 'Uniformidad media' },
+    { value: 'bastante_uniforme', label: 'Bastante uniforme' },
+    { value: 'completamente_uniforme', label: 'Completamente uniforme' }
+  ];
+
+  const getUniformityLabel = (value) => {
+    const option = uniformityOptions.find(opt => opt.value === value);
+    return option ? option.label : value;
+  };
 
   useEffect(() => {
     const fetchLoteDetails = async () => {
       try {
         const response = await api.getLote(id);
         setLote(response);
+        const existingPhotos = response.photos || [];
+        setPhotoURLs(existingPhotos);
+        setPhotosToKeep(existingPhotos); // Inicialmente, se mantienen todas
+        setEditForm({
+          animal_type: response.animal_type || '',
+          breed: response.breed || '',
+          total_count: response.total_count || '',
+          average_weight: response.average_weight || '',
+          base_price: response.base_price || '',
+          location: response.location || '',
+          city: response.city || '',
+          province: response.province || '',
+          description: response.description || '',
+          video_url: response.video_url || '',
+          uniformity: response.uniformity || 'uniformidad_media'
+        });
+        setNewVideoURL(response.video_url || '');
         setLoading(false);
       } catch (error) {
         console.error('Error fetching lote details:', error);
@@ -26,6 +61,141 @@ export default function LoteDetail() {
 
     fetchLoteDetails();
   }, [id]);
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    // Restaurar valores originales
+    const existingPhotos = lote.photos || [];
+    setPhotoURLs(existingPhotos);
+    setPhotosToKeep(existingPhotos);
+    setNewPhotos([]);
+    setEditForm({
+      animal_type: lote.animal_type || '',
+      breed: lote.breed || '',
+      total_count: lote.total_count || '',
+      average_weight: lote.average_weight || '',
+      base_price: lote.base_price || '',
+      location: lote.location || '',
+      city: lote.city || '',
+      province: lote.province || '',
+      description: lote.description || '',
+      video_url: lote.video_url || '',
+      uniformity: lote.uniformity || 'uniformidad_media'
+    });
+    setNewVideoURL(lote.video_url || '');
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      // Si hay cambios en las fotos, usar FormData
+      if (newPhotos.length > 0 || photosToKeep.length !== (lote.photos || []).length) {
+        const formData = new FormData();
+        
+        // Agregar todos los campos editables
+        Object.keys(editForm).forEach(key => {
+          if (editForm[key] !== null && editForm[key] !== undefined) {
+            formData.append(key, editForm[key]);
+          }
+        });
+        
+        // Agregar video URL
+        formData.append('video_url', newVideoURL);
+        
+        // Agregar nuevas fotos
+        newPhotos.forEach(photo => {
+          formData.append('photos', photo);
+        });
+        
+        // Agregar fotos existentes que se mantienen (como string JSON)
+        formData.append('existing_photos', JSON.stringify(photosToKeep));
+        
+        // Enviar con FormData
+        const response = await fetch(`http://localhost:5000/api/lotes/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: formData
+        });
+        
+        if (!response.ok) throw new Error('Error al actualizar');
+        
+        const updatedLote = await response.json();
+        setLote(updatedLote.lote || updatedLote);
+      } else {
+        // Si no hay cambios en fotos, usar el método normal
+        const updateData = { ...editForm, video_url: newVideoURL };
+        const updatedLote = await api.updateLote(id, updateData);
+        setLote({ ...lote, ...updatedLote });
+      }
+      
+      setIsEditing(false);
+      alert('Lote actualizado exitosamente');
+      
+      // Refrescar los datos sin recargar la página
+      const refreshedLote = await api.getLote(id);
+      setLote(refreshedLote);
+      setPhotoURLs(refreshedLote.photos || []);
+      setPhotosToKeep(refreshedLote.photos || []);
+      setNewPhotos([]);
+      setEditForm({
+        animal_type: refreshedLote.animal_type || '',
+        breed: refreshedLote.breed || '',
+        total_count: refreshedLote.total_count || '',
+        average_weight: refreshedLote.average_weight || '',
+        base_price: refreshedLote.base_price || '',
+        location: refreshedLote.location || '',
+        city: refreshedLote.city || '',
+        province: refreshedLote.province || '',
+        description: refreshedLote.description || '',
+        video_url: refreshedLote.video_url || '',
+        uniformity: refreshedLote.uniformity || 'uniformidad_media'
+      });
+    } catch (error) {
+      console.error('Error updating lote:', error);
+      alert('Error al actualizar el lote: ' + error.message);
+    }
+  };
+
+  const handleEditFormChange = (field, value) => {
+    setEditForm({ ...editForm, [field]: value });
+  };
+
+  const handlePhotoUpload = (e) => {
+    const files = Array.from(e.target.files);
+    setNewPhotos([...newPhotos, ...files]);
+    
+    // Crear URLs de preview
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoURLs(prev => [...prev, reader.result]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemovePhoto = (index) => {
+    const photoToRemove = photoURLs[index];
+    
+    // Remover de la vista
+    setPhotoURLs(photoURLs.filter((_, i) => i !== index));
+    
+    // Si es una foto existente del servidor (no es un data: URL de preview)
+    if (!photoToRemove.startsWith('data:')) {
+      // Remover de las fotos que se mantendrán
+      setPhotosToKeep(photosToKeep.filter(p => p !== photoToRemove));
+    } else {
+      // Si es una foto nueva (data: URL), remover del array de nuevas fotos
+      // Contar cuántas fotos de preview hay antes de este índice
+      const dataUrlsBefore = photoURLs.slice(0, index).filter(p => p.startsWith('data:')).length;
+      setNewPhotos(newPhotos.filter((_, i) => i !== dataUrlsBefore));
+    }
+  };
 
   const handleStatusChange = async (newStatus) => {
     if (!window.confirm(`¿Cambiar estado a "${newStatus}"?`)) return;
@@ -83,8 +253,11 @@ export default function LoteDetail() {
     );
   }
 
-  const photos = Array.isArray(lote.photos) ? lote.photos : [];
   const API_BASE_URL = 'http://localhost:5000';
+  
+  // Cálculos
+  const totalWeight = (lote.total_count || 0) * (lote.average_weight || 0);
+  const totalValue = totalWeight * (lote.base_price || 0);
 
   return (
     <div className="lote-detail-container">
@@ -97,31 +270,78 @@ export default function LoteDetail() {
           {getStatusBadge(lote.status)}
         </div>
         <div className="header-actions">
-          <Link to={`/vendedor/editar/${id}`} className="btn btn-outline">
-            ✏️ Editar
-          </Link>
-          <button onClick={handleDelete} className="btn btn-danger">
-            🗑️ Eliminar
-          </button>
+          {!isEditing ? (
+            <>
+              <button onClick={handleEdit} className="btn btn-outline">
+                ✏️ Editar
+              </button>
+              <button onClick={handleDelete} className="btn btn-danger">
+                🗑️ Eliminar
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={handleCancelEdit} className="btn btn-outline">
+                ✖️ Cancelar
+              </button>
+              <button onClick={handleSaveEdit} className="btn btn-primary">
+                ✔️ Guardar
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       <div className="detail-content">
         <div className="media-section">
-          {photos.length > 0 ? (
+          {isEditing && (
+            <div className="photo-upload-section">
+              <h3>Gestionar Fotos</h3>
+              <input 
+                type="file" 
+                accept="image/*" 
+                multiple 
+                onChange={handlePhotoUpload}
+                className="file-input"
+                id="photo-upload"
+              />
+              <label htmlFor="photo-upload" className="btn btn-secondary">
+                📷 Agregar Fotos
+              </label>
+              <p className="help-text">Puedes agregar múltiples fotos. Las actuales se mantendrán.</p>
+            </div>
+          )}
+
+          {photoURLs.length > 0 ? (
             <>
               <div className="main-image">
-                <img src={`${API_BASE_URL}${photos[activeImage]}`} alt={`Lote ${lote.id}`} />
+                <img 
+                  src={photoURLs[activeImage].startsWith('data:') 
+                    ? photoURLs[activeImage] 
+                    : `${API_BASE_URL}${photoURLs[activeImage]}`
+                  } 
+                  alt={`Lote ${lote.id}`} 
+                />
               </div>
               <div className="image-thumbnails">
-                {photos.map((photo, index) => (
-                  <img
-                    key={index}
-                    src={`${API_BASE_URL}${photo}`}
-                    alt={`Thumbnail ${index + 1}`}
-                    className={activeImage === index ? 'active' : ''}
-                    onClick={() => setActiveImage(index)}
-                  />
+                {photoURLs.map((photo, index) => (
+                  <div key={index} className="thumbnail-wrapper">
+                    <img
+                      src={photo.startsWith('data:') ? photo : `${API_BASE_URL}${photo}`}
+                      alt={`Thumbnail ${index + 1}`}
+                      className={activeImage === index ? 'active' : ''}
+                      onClick={() => setActiveImage(index)}
+                    />
+                    {isEditing && (
+                      <button 
+                        className="remove-photo-btn"
+                        onClick={() => handleRemovePhoto(index)}
+                        title="Eliminar foto"
+                      >
+                        ✖
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             </>
@@ -129,15 +349,39 @@ export default function LoteDetail() {
             <div className="no-images">
               <span>📷</span>
               <p>Sin imágenes</p>
+              {isEditing && (
+                <label htmlFor="photo-upload" className="btn btn-primary">
+                  Agregar Primera Foto
+                </label>
+              )}
             </div>
           )}
 
-          {lote.video_url && (
-            <div className="video-section">
-              <h3>Video del Lote</h3>
+          <div className="video-section">
+            <h3>Video del Lote</h3>
+            {isEditing ? (
+              <div className="video-edit">
+                <label>URL del Video:</label>
+                <input 
+                  type="url" 
+                  value={newVideoURL}
+                  onChange={(e) => setNewVideoURL(e.target.value)}
+                  placeholder="https://youtube.com/... o URL directa"
+                  className="edit-input"
+                />
+                {newVideoURL && (
+                  <video controls src={newVideoURL} className="video-preview" />
+                )}
+              </div>
+            ) : lote.video_url ? (
               <video controls src={lote.video_url} />
-            </div>
-          )}
+            ) : (
+              <div className="no-images">
+                <span>🎥</span>
+                <p>Sin video</p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="info-section">
@@ -146,32 +390,125 @@ export default function LoteDetail() {
             <div className="info-grid">
               <div className="info-item">
                 <span className="label">Tipo de Animal:</span>
-                <span className="value">{lote.animal_type}</span>
+                {isEditing ? (
+                  <input 
+                    type="text" 
+                    value={editForm.animal_type}
+                    onChange={(e) => handleEditFormChange('animal_type', e.target.value)}
+                    className="edit-input"
+                  />
+                ) : (
+                  <span className="value">{lote.animal_type}</span>
+                )}
               </div>
               <div className="info-item">
                 <span className="label">Raza:</span>
-                <span className="value">{lote.breed}</span>
+                {isEditing ? (
+                  <input 
+                    type="text" 
+                    value={editForm.breed}
+                    onChange={(e) => handleEditFormChange('breed', e.target.value)}
+                    className="edit-input"
+                  />
+                ) : (
+                  <span className="value">{lote.breed}</span>
+                )}
+              </div>
+              <div className="info-item">
+                <span className="label">Uniformidad:</span>
+                {isEditing ? (
+                  <select
+                    value={editForm.uniformity}
+                    onChange={(e) => handleEditFormChange('uniformity', e.target.value)}
+                    className="edit-input"
+                  >
+                    {uniformityOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="value">{getUniformityLabel(lote.uniformity)}</span>
+                )}
               </div>
               <div className="info-item">
                 <span className="label">Cantidad Total:</span>
-                <span className="value">{lote.total_count} animales</span>
+                {isEditing ? (
+                  <input 
+                    type="number" 
+                    value={editForm.total_count}
+                    onChange={(e) => handleEditFormChange('total_count', e.target.value)}
+                    className="edit-input"
+                  />
+                ) : (
+                  <span className="value">{lote.total_count} animales</span>
+                )}
               </div>
               <div className="info-item">
                 <span className="label">Peso Promedio:</span>
-                <span className="value">{lote.average_weight} kg</span>
+                {isEditing ? (
+                  <input 
+                    type="number" 
+                    value={editForm.average_weight}
+                    onChange={(e) => handleEditFormChange('average_weight', e.target.value)}
+                    className="edit-input"
+                  />
+                ) : (
+                  <span className="value">{lote.average_weight} kg</span>
+                )}
               </div>
               <div className="info-item">
                 <span className="label">Peso Total:</span>
-                <span className="value">{lote.total_weight} kg</span>
+                <span className="value">{totalWeight.toFixed(2)} kg</span>
               </div>
               <div className="info-item">
                 <span className="label">Precio Base:</span>
-                <span className="value">${lote.base_price}/kg</span>
+                {isEditing ? (
+                  <input 
+                    type="number" 
+                    value={editForm.base_price}
+                    onChange={(e) => handleEditFormChange('base_price', e.target.value)}
+                    className="edit-input"
+                  />
+                ) : (
+                  <span className="value">${lote.base_price}/kg</span>
+                )}
+              </div>
+              <div className="info-item">
+                <span className="label">Valor Total del Lote:</span>
+                <span className="value">${totalValue.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="info-item">
                 <span className="label">Ubicación:</span>
-                <span className="value">{lote.location}</span>
+                {isEditing ? (
+                  <input 
+                    type="text" 
+                    value={editForm.location}
+                    onChange={(e) => handleEditFormChange('location', e.target.value)}
+                    placeholder="Estancia o Localidad"
+                    className="edit-input"
+                  />
+                ) : (
+                  <span className="value">{lote.location}</span>
+                )}
               </div>
+              {(lote.province || isEditing) && (
+                <div className="info-item">
+                  <span className="label">Provincia:</span>
+                  {isEditing ? (
+                    <input 
+                      type="text" 
+                      value={editForm.province}
+                      onChange={(e) => handleEditFormChange('province', e.target.value)}
+                      placeholder="Provincia"
+                      className="edit-input"
+                    />
+                  ) : (
+                    <span className="value">{lote.province}</span>
+                  )}
+                </div>
+              )}
               <div className="info-item">
                 <span className="label">Fecha de Publicación:</span>
                 <span className="value">
@@ -181,10 +518,19 @@ export default function LoteDetail() {
             </div>
           </div>
 
-          {lote.description && (
+          {(lote.description || isEditing) && (
             <div className="info-card">
               <h2>Descripción</h2>
-              <p>{lote.description}</p>
+              {isEditing ? (
+                <textarea 
+                  value={editForm.description}
+                  onChange={(e) => handleEditFormChange('description', e.target.value)}
+                  className="edit-textarea"
+                  rows="5"
+                />
+              ) : (
+                <p>{lote.description}</p>
+              )}
             </div>
           )}
 

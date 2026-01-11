@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from "../../services/api";
-import '../../styles/forms.css';
+import { 
+  Package, 
+  Plus, 
+  Filter, 
+  RefreshCw,
+  Eye,
+  Trash2,
+  Calendar,
+  MapPin,
+  DollarSign
+} from "lucide-react";
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import '../../styles/dashboard.css';
 
 export default function MyLotes() {
   const [lotes, setLotes] = useState([]);
@@ -82,6 +95,18 @@ export default function MyLotes() {
     return <span className={`status-badge ${badge.class}`}>{badge.label}</span>;
   };
 
+  const handleRefresh = () => {
+    fetchMyLotes();
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      status: 'all',
+      sort_by: 'created_at',
+      sort_order: 'desc'
+    });
+  };
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -92,184 +117,220 @@ export default function MyLotes() {
   }
 
   return (
-    <div className="my-lotes-container">
+    <div className="dashboard-container">
       <div className="page-header">
-        <div className="header-content">
-          <h1>Mis Lotes</h1>
-          <p>Gestiona todas tus publicaciones</p>
-        </div>
+        <h1>
+          <Package size={32} />
+          Mis Lotes
+        </h1>
         <div className="header-actions">
+          <button 
+            className="btn btn-secondary"
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            <RefreshCw size={20} className={loading ? "spin" : ""} />
+            Actualizar
+          </button>
           <Link to="/vendedor/crear" className="btn btn-primary">
-            <span>+</span> Crear Nuevo Lote
+            <Plus size={20} />
+            Crear Nuevo Lote
           </Link>
         </div>
       </div>
 
-      <div className="controls-bar">
-        <div className="filters">
-          <select 
-            value={filters.status}
-            onChange={(e) => setFilters({...filters, status: e.target.value})}
-            className="filter-select"
-          >
-            <option value="all">Todos los estados</option>
-            <option value="ofertado">Ofertado</option>
-            <option value="completo">Completo</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
-
-          <select 
-            value={filters.sort_by}
-            onChange={(e) => setFilters({...filters, sort_by: e.target.value})}
-            className="filter-select"
-          >
-            <option value="created_at">Ordenar por fecha</option>
-            <option value="base_price">Ordenar por precio</option>
-            <option value="total_count">Ordenar por cantidad</option>
-          </select>
-
+      {/* Filtros */}
+      <div className="filters-container">
+        <div className="filters-header">
+          <Filter size={20} />
+          <h3>Filtros y Ordenamiento</h3>
           <button 
-            onClick={() => setFilters({...filters, sort_order: filters.sort_order === 'desc' ? 'asc' : 'desc'})}
-            className="btn btn-outline"
+            className="btn btn-text"
+            onClick={resetFilters}
           >
-            {filters.sort_order === 'desc' ? 'Descendente ↑' : 'Ascendente ↓'}
+            Limpiar filtros
           </button>
         </div>
-      </div>
-
-      <div className="lotes-table-container">
-        <table className="lotes-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Tipo</th>
-              <th>Ubicación</th>
-              <th>Cantidad</th>
-              <th>Peso (kg)</th>
-              <th>Precio Base</th>
-              <th>Estado</th>
-              <th>Fecha</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredLotes.map((lote) => (
-              <tr key={lote.id}>
-                <td className="lote-id">#{lote.id}</td>
-                <td>
-                  <div className="lote-type">
-                    <span className="type-icon">🐄</span>
-                    {lote.animal_type}
-                  </div>
-                </td>
-                <td>{lote.location}</td>
-                <td>{lote.total_count}</td>
-                <td>{lote.average_weight}</td>
-                <td>${lote.base_price}/kg</td>
-                <td>{getStatusBadge(lote.status)}</td>
-                <td>
-                  {new Date(lote.created_at).toLocaleDateString()}
-                </td>
-                <td>
-                  <div className="action-buttons">
-                    <Link 
-                      to={`/vendedor/lote/${lote.id}`}
-                      className="btn btn-small"
-                      title="Ver detalles"
-                    >
-                      👁️
-                    </Link>
-                    <select 
-                      value={lote.status}
-                      onChange={(e) => handleStatusChange(lote.id, e.target.value)}
-                      className="status-select"
-                    >
-                      <option value="ofertado">Ofertado</option>
-                      <option value="completo">Completo</option>
-                      <option value="cancelado">Cancelado</option>
-                    </select>
-                    <button 
-                      onClick={() => handleDelete(lote.id)}
-                      className="btn btn-small btn-danger"
-                      title="Eliminar"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="lotes-cards">
-        {filteredLotes.map((lote) => (
-          <div key={lote.id} className="lote-card-mobile">
-            <div className="card-header">
-              <div className="card-title">
-                <h4>{lote.animal_type} - {lote.breed}</h4>
-                {getStatusBadge(lote.status)}
-              </div>
-              <span className="card-id">#{lote.id}</span>
-            </div>
-            
-            <div className="card-content">
-              <div className="card-row">
-                <span className="row-label">Ubicación:</span>
-                <span className="row-value">{lote.location}</span>
-              </div>
-              <div className="card-row">
-                <span className="row-label">Cantidad:</span>
-                <span className="row-value">{lote.total_count} animales</span>
-              </div>
-              <div className="card-row">
-                <span className="row-label">Peso promedio:</span>
-                <span className="row-value">{lote.average_weight} kg</span>
-              </div>
-              <div className="card-row">
-                <span className="row-label">Precio base:</span>
-                <span className="row-value">${lote.base_price}/kg</span>
-              </div>
-              <div className="card-row">
-                <span className="row-label">Fecha:</span>
-                <span className="row-value">
-                  {new Date(lote.created_at).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
-            
-            <div className="card-actions">
-              <Link 
-                to={`/vendedor/lote/${lote.id}`}
-                className="btn btn-small"
-              >
-                Ver
-              </Link>
-              <select 
-                value={lote.status}
-                onChange={(e) => handleStatusChange(lote.id, e.target.value)}
-                className="status-select"
-              >
-                <option value="ofertado">Ofertado</option>
-                <option value="completo">Completo</option>
-                <option value="cancelado">Cancelado</option>
-              </select>
-            </div>
+        
+        <div className="filters-grid">
+          <div className="filter-group">
+            <label>Estado</label>
+            <select 
+              value={filters.status}
+              onChange={(e) => setFilters({...filters, status: e.target.value})}
+              className="select-input"
+            >
+              <option value="all">Todos los estados</option>
+              <option value="ofertado">Ofertado</option>
+              <option value="completo">Completo</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
           </div>
-        ))}
+
+          <div className="filter-group">
+            <label>Ordenar por</label>
+            <select 
+              value={filters.sort_by}
+              onChange={(e) => setFilters({...filters, sort_by: e.target.value})}
+              className="select-input"
+            >
+              <option value="created_at">Fecha de publicación</option>
+              <option value="base_price">Precio</option>
+              <option value="total_count">Cantidad</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Orden</label>
+            <select 
+              value={filters.sort_order}
+              onChange={(e) => setFilters({...filters, sort_order: e.target.value})}
+              className="select-input"
+            >
+              <option value="desc">Descendente</option>
+              <option value="asc">Ascendente</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      {filteredLotes.length === 0 && (
-        <div className="empty-state">
-          <div className="empty-icon">📦</div>
-          <h3>No hay lotes publicados</h3>
-          <p>Comienza creando tu primer lote</p>
-          <Link to="/vendedor/crear" className="btn btn-primary">
-            Crear Lote
-          </Link>
+      {/* Estadísticas rápidas */}
+      <div className="stats-grid">
+        <div className="stat-card stat-blue">
+          <div className="stat-header">
+            <Package size={24} />
+            <span className="stat-title">Total de Lotes</span>
+          </div>
+          <div className="stat-content">
+            <h3 className="stat-value">{lotes.length}</h3>
+          </div>
         </div>
-      )}
+        
+        <div className="stat-card stat-orange">
+          <div className="stat-header">
+            <Package size={24} />
+            <span className="stat-title">Ofertados</span>
+          </div>
+          <div className="stat-content">
+            <h3 className="stat-value">
+              {lotes.filter(l => l.status === 'ofertado').length}
+            </h3>
+          </div>
+        </div>
+
+        <div className="stat-card stat-green">
+          <div className="stat-header">
+            <Package size={24} />
+            <span className="stat-title">Completos</span>
+          </div>
+          <div className="stat-content">
+            <h3 className="stat-value">
+              {lotes.filter(l => l.status === 'completo').length}
+            </h3>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabla de Lotes */}
+      <div className="dashboard-section">
+        <div className="section-header">
+          <h2>Lotes Publicados ({filteredLotes.length})</h2>
+        </div>
+
+        {filteredLotes.length === 0 ? (
+          <div className="empty-state">
+            <Package size={48} />
+            <p>No hay lotes publicados con los filtros seleccionados</p>
+            <Link to="/vendedor/crear" className="btn btn-primary">
+              <Plus size={20} />
+              Crear Primer Lote
+            </Link>
+          </div>
+        ) : (
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Tipo/Raza</th>
+                  <th>Ubicación</th>
+                  <th>Cantidad</th>
+                  <th>Peso Prom.</th>
+                  <th>Precio Base</th>
+                  <th>Estado</th>
+                  <th>Fecha</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLotes.map((lote) => (
+                  <tr key={lote.id}>
+                    <td className="id-cell">#{lote.id}</td>
+                    <td>
+                      <div className="cell-with-icon">
+                        🐄
+                        <div>
+                          <div className="cell-primary">{lote.animal_type}</div>
+                          <div className="cell-secondary">{lote.breed}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="cell-with-icon">
+                        <MapPin size={16} />
+                        {lote.location}
+                      </div>
+                    </td>
+                    <td className="number-cell">{lote.total_count}</td>
+                    <td className="number-cell">{lote.average_weight} kg</td>
+                    <td className="price-cell">
+                      <div className="cell-with-icon">
+                        <DollarSign size={16} />
+                        {lote.base_price}/kg
+                      </div>
+                    </td>
+                    <td>{getStatusBadge(lote.status)}</td>
+                    <td>
+                      <div className="cell-with-icon">
+                        <Calendar size={16} />
+                        {format(new Date(lote.created_at), "dd/MM/yyyy", { locale: es })}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        <Link 
+                          to={`/vendedor/lote/${lote.id}`}
+                          className="btn btn-sm btn-primary"
+                          title="Ver detalles"
+                        >
+                          <Eye size={16} />
+                        </Link>
+                        <select 
+                          value={lote.status}
+                          onChange={(e) => handleStatusChange(lote.id, e.target.value)}
+                          className="status-select-mini"
+                          title="Cambiar estado"
+                        >
+                          <option value="ofertado">Ofertado</option>
+                          <option value="completo">Completo</option>
+                          <option value="cancelado">Cancelado</option>
+                        </select>
+                        <button 
+                          onClick={() => handleDelete(lote.id)}
+                          className="btn btn-sm btn-danger"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
