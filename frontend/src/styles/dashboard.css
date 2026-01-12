@@ -926,6 +926,11 @@
   border-left: 4px solid var(--success-color);
 }
 
+.info-banner {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(41, 128, 185, 0.05) 100%);
+  border-left: 4px solid #3498db;
+}
+
 .warning-banner {
   background: linear-gradient(135deg, rgba(248, 150, 30, 0.1) 0%, rgba(247, 37, 133, 0.05) 100%);
   border-left: 4px solid var(--warning-color);
@@ -940,6 +945,14 @@
 .banner-content svg {
   flex-shrink: 0;
   color: var(--primary-color);
+}
+
+.success-banner svg {
+  color: var(--success-color);
+}
+
+.info-banner svg {
+  color: #3498db;
 }
 
 .warning-banner svg {

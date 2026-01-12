@@ -194,14 +194,16 @@ export default function MyCertifications() {
       )}
 
       {/* Información adicional */}
-      <div className="info-banner">
-        <FileCheck size={24} />
-        <div>
-          <h3>Sobre las Certificaciones</h3>
-          <p>
-            Puedes solicitar certificación con múltiples bancos para aumentar tus opciones de financiamiento.
-            Cada banco revisará tu solicitud de manera independiente.
-          </p>
+      <div className="info-card info-banner">
+        <div className="banner-content">
+          <FileCheck size={24} />
+          <div className="banner-text">
+            <h3>Sobre las Certificaciones</h3>
+            <p>
+              Puedes solicitar certificación con múltiples bancos para aumentar tus opciones de financiamiento.
+              Cada banco revisará tu solicitud de manera independiente.
+            </p>
+          </div>
         </div>
       </div>
     </div>

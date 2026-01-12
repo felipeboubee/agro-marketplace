@@ -99,23 +99,64 @@ const transactionController = {
         [buyer_id]
       );
 
-      // Estado de certificación
+      // Estado de certificación - obtener todas las certificaciones
       const certResult = await pool.query(
-        `SELECT status FROM certifications 
-         WHERE user_id = $1 AND status = 'aprobado' 
-         ORDER BY created_at DESC LIMIT 1`,
+        `SELECT status, bank_name, created_at, reviewed_at 
+         FROM certifications 
+         WHERE user_id = $1 
+         ORDER BY created_at DESC`,
         [buyer_id]
       );
 
-      const certificationStatus = certResult.rows.length > 0 ? 'certified' : 'no_certified';
+      let certificationStatus = 'no_certified';
+      let certificationDetails = null;
 
-      res.json({
+      if (certResult.rows.length > 0) {
+        const certs = certResult.rows;
+        // Buscar si hay alguna aprobada
+        const approved = certs.find(c => c.status === 'aprobado');
+        if (approved) {
+          certificationStatus = 'certified';
+          certificationDetails = {
+            bank: approved.bank_name,
+            approvedAt: approved.reviewed_at,
+            count: certs.filter(c => c.status === 'aprobado').length
+          };
+        } else {
+          // Si no hay aprobada, verificar si hay pendiente
+          const pending = certs.find(c => c.status === 'pendiente_aprobacion');
+          if (pending) {
+            certificationStatus = 'pending';
+            certificationDetails = {
+              bank: pending.bank_name,
+              requestedAt: pending.created_at,
+              count: certs.filter(c => c.status === 'pendiente_aprobacion').length
+            };
+          } else {
+            // Si no hay pendiente ni aprobada, debe haber rechazada
+            const rejected = certs.find(c => c.status === 'rechazado');
+            if (rejected) {
+              certificationStatus = 'rejected';
+              certificationDetails = {
+                bank: rejected.bank_name,
+                rejectedAt: rejected.reviewed_at
+              };
+            }
+          }
+        }
+      }
+
+      const result = {
         totalPurchases: parseInt(totalResult.rows[0].count),
         activePurchases: parseInt(activeResult.rows[0].count),
         completedTransactions: parseInt(completedResult.rows[0].count),
         totalSpent: parseFloat(spentResult.rows[0].total),
-        certificationStatus
-      });
+        certificationStatus,
+        certificationDetails
+      };
+
+      console.log('getBuyerStats result:', JSON.stringify(result, null, 2));
+      res.json(result);
     } catch (error) {
       console.error('Error fetching buyer stats:', error);
       res.status(500).json({ error: 'Error interno del servidor' });

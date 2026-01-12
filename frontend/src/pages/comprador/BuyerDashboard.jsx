@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { ShoppingCart, TrendingUp, FileCheck, DollarSign, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ShoppingCart, TrendingUp, FileCheck, DollarSign, Plus, Clock, XCircle, CheckCircle } from 'lucide-react';
 import { api } from '../../services/api';
 import '../../styles/dashboard.css';
 
@@ -11,14 +11,15 @@ export default function BuyerDashboard() {
     activePurchases: 0,
     completedTransactions: 0,
     totalSpent: 0,
-    certificationStatus: 'no_certified'
+    certificationStatus: 'no_certified',
+    certificationDetails: null
   });
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
   const loadDashboardData = async () => {
     try {
       const data = await api.getBuyerStats();
+      console.log('BuyerDashboard - Stats received:', data);
       setStats(data);
     } catch (error) {
       console.error('Error loading buyer dashboard:', error);
@@ -99,23 +100,58 @@ export default function BuyerDashboard() {
       </div>
 
       {/* Certification Status Banner */}
-      <div className={`info-card ${stats.certificationStatus === 'certified' ? 'success-banner' : 'warning-banner'}`}>
+      <div className={`info-card ${
+        stats.certificationStatus === 'certified' ? 'success-banner' : 
+        stats.certificationStatus === 'pending' ? 'info-banner' :
+        stats.certificationStatus === 'rejected' ? 'warning-banner' :
+        'warning-banner'
+      }`}>
         <div className="banner-content">
-          <FileCheck size={32} />
+          {stats.certificationStatus === 'certified' && <CheckCircle size={32} />}
+          {stats.certificationStatus === 'pending' && <Clock size={32} />}
+          {stats.certificationStatus === 'rejected' && <XCircle size={32} />}
+          {stats.certificationStatus === 'no_certified' && <FileCheck size={32} />}
+          
           <div className="banner-text">
             <h3>Certificación Financiera</h3>
-            <p>
-              {stats.certificationStatus === 'certified' 
-                ? '✓ Tienes certificación financiera activa. Accede a mejores condiciones de compra.'
-                : 'No tienes certificación financiera. Solicita una para acceder a financiamiento y mejores condiciones.'}
-            </p>
+            {stats.certificationStatus === 'certified' && (
+              <p>
+                ✓ Tienes {stats.certificationDetails?.count > 1 ? `${stats.certificationDetails.count} certificaciones activas` : 'certificación activa'} con {stats.certificationDetails?.bank}. 
+                Accede a mejores condiciones de compra.
+              </p>
+            )}
+            {stats.certificationStatus === 'pending' && (
+              <p>
+                ⏳ Tienes {stats.certificationDetails?.count > 1 ? `${stats.certificationDetails.count} solicitudes pendientes` : 'una solicitud pendiente'} de revisión con {stats.certificationDetails?.bank}.
+                Te notificaremos cuando sea revisada.
+              </p>
+            )}
+            {stats.certificationStatus === 'rejected' && (
+              <p>
+                ✗ Tu última solicitud con {stats.certificationDetails?.bank} fue rechazada. 
+                Puedes solicitar certificación con otro banco.
+              </p>
+            )}
+            {stats.certificationStatus === 'no_certified' && (
+              <p>
+                No tienes certificación financiera. Solicita una para acceder a financiamiento y mejores condiciones.
+              </p>
+            )}
           </div>
-          {stats.certificationStatus !== 'certified' && (
-            <Link to="/comprador/certificacion" className="btn btn-primary">
-              <Plus size={20} />
-              Solicitar Certificación
-            </Link>
-          )}
+          
+          <Link to="/comprador/certificaciones" className="btn btn-primary">
+            {stats.certificationStatus === 'certified' ? (
+              <>
+                <FileCheck size={20} />
+                Ver Certificaciones
+              </>
+            ) : (
+              <>
+                <Plus size={20} />
+                {stats.certificationStatus === 'pending' ? 'Ver Estado' : 'Solicitar Certificación'}
+              </>
+            )}
+          </Link>
         </div>
       </div>
 
