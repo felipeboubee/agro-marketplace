@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import '../../styles/forms.css';
+import { FileCheck, Filter, RefreshCw, Eye, User, Clock, CheckCircle, XCircle, Calendar, DollarSign } from 'lucide-react';
+import '../../styles/dashboard.css';
 
 const CertificationRequests = () => {
   const [requests, setRequests] = useState([]);
@@ -34,7 +35,9 @@ const CertificationRequests = () => {
 
   const fetchCertificationRequests = async () => {
     try {
+      console.log('Fetching certifications...');
       const response = await api.getBankCertifications();
+      console.log('Certifications received:', response);
       
       setRequests(response);
       calculateStats(response);
@@ -47,7 +50,7 @@ const CertificationRequests = () => {
 
   const calculateStats = (requestsList) => {
     const stats = {
-      pending: requestsList.filter(r => r.status === 'pendiente').length,
+      pending: requestsList.filter(r => r.status === 'pendiente_aprobacion').length,
       approved: requestsList.filter(r => r.status === 'aprobado').length,
       rejected: requestsList.filter(r => r.status === 'rechazado').length,
       more_data: requestsList.filter(r => r.status === 'mas_datos').length,
@@ -67,9 +70,9 @@ const CertificationRequests = () => {
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       result = result.filter(req => 
-        req.user_name.toLowerCase().includes(searchLower) ||
-        req.email.toLowerCase().includes(searchLower) ||
-        req.bank_name.toLowerCase().includes(searchLower)
+        req.user_name?.toLowerCase().includes(searchLower) ||
+        req.email?.toLowerCase().includes(searchLower) ||
+        req.bank_name?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -93,6 +96,20 @@ const CertificationRequests = () => {
     setFilteredRequests(result);
   };
 
+  const handleRefresh = () => {
+    setLoading(true);
+    fetchCertificationRequests();
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      status: 'all',
+      search: '',
+      sort_by: 'created_at',
+      sort_order: 'desc'
+    });
+  };
+
   const handleFilterChange = (e) => {
     setFilters({
       ...filters,
@@ -104,13 +121,7 @@ const CertificationRequests = () => {
     setActionLoading(true);
     
     try {
-      const token = localStorage.getItem('token');
-      const data = { status };
-      if (notes) data.notes = notes;
-
-      await api.put(`/certifications/${requestId}/status`, data, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.updateCertificationStatus(requestId, status, notes);
 
       // Actualizar lista localmente
       setRequests(requests.map(req => 
@@ -122,7 +133,8 @@ const CertificationRequests = () => {
         setSelectedRequest(null);
       }
 
-      alert(`Solicitud ${getStatusLabel(status)} exitosamente`);
+      alert(`Solicitud actualizada exitosamente`);
+      fetchCertificationRequests();
     } catch (error) {
       console.error('Error updating certification status:', error);
       alert('Error al actualizar la solicitud');
@@ -131,141 +143,120 @@ const CertificationRequests = () => {
     }
   };
 
-  const getStatusLabel = (status) => {
-    const labels = {
-      'pendiente': 'pendiente',
-      'aprobado': 'aprobada',
-      'rechazado': 'rechazada',
-      'mas_datos': 'marcada como necesita más datos'
-    };
-    return labels[status] || status;
-  };
-
   const getStatusBadge = (status) => {
     const badges = {
-      'pendiente': { label: 'Pendiente', class: 'badge-warning' },
-      'aprobado': { label: 'Aprobado', class: 'badge-success' },
-      'rechazado': { label: 'Rechazado', class: 'badge-danger' },
-      'mas_datos': { label: 'Más Datos', class: 'badge-info' }
+      'pendiente_aprobacion': { label: 'Pendiente', class: 'status-badge', icon: Clock },
+      'aprobado': { label: 'Aprobado', class: 'status-badge status-aprobado', icon: CheckCircle },
+      'rechazado': { label: 'Rechazado', class: 'status-badge status-rechazado', icon: XCircle },
+      'mas_datos': { label: 'Más Datos', class: 'status-badge status-mas-datos', icon: FileCheck }
     };
-    const badge = badges[status] || { label: status, class: 'badge-default' };
-    return <span className={`badge ${badge.class}`}>{badge.label}</span>;
-  };
-
-  const formatFinancialData = (data) => {
-    if (typeof data === 'string') {
-      try {
-        data = JSON.parse(data);
-      } catch (e) {
-        return data;
-      }
-    }
-    
-    if (typeof data === 'object') {
-      return (
-        <div className="financial-data">
-          {Object.entries(data).map(([key, value]) => (
-            <div key={key} className="financial-row">
-              <span className="financial-key">{formatKey(key)}:</span>
-              <span className="financial-value">{formatValue(key, value)}</span>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    
-    return data;
-  };
-
-  const formatKey = (key) => {
-    const keyMap = {
-      'monthly_income': 'Ingreso Mensual',
-      'requested_amount': 'Monto Solicitado',
-      'employment_status': 'Situación Laboral',
-      'purpose': 'Finalidad',
-      'assets': 'Activos',
-      'liabilities': 'Pasivos'
-    };
-    return keyMap[key] || key.replace(/_/g, ' ');
-  };
-
-  const formatValue = (key, value) => {
-    if (key.includes('amount') || key.includes('income')) {
-      return `$${parseFloat(value).toLocaleString('es-AR')}`;
-    }
-    return value;
+    const badge = badges[status] || { label: status, class: 'status-badge', icon: Clock };
+    const Icon = badge.icon;
+    return (
+      <span className={badge.class}>
+        <Icon size={14} />
+        {badge.label}
+      </span>
+    );
   };
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Cargando solicitudes de certificación...</p>
+      <div className="dashboard-container">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Cargando solicitudes de certificación...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="certification-requests-container">
+    <div className="dashboard-container">
       <div className="page-header">
-        <div>
-          <h1>Solicitudes de Certificación</h1>
-          <p>Gestiona las solicitudes de certificación de crédito</p>
-        </div>
+        <h1>
+          <FileCheck size={32} />
+          Solicitudes de Certificación
+        </h1>
         <div className="header-actions">
-          <button className="btn btn-outline">
-            <i className="fas fa-sync-alt"></i> Actualizar
+          <button 
+            className="btn btn-secondary"
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            <RefreshCw size={20} className={loading ? "spin" : ""} />
+            Actualizar
           </button>
         </div>
       </div>
 
       {/* Estadísticas */}
       <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon">⏳</div>
+        <div className="stat-card stat-blue">
+          <div className="stat-icon">
+            <Clock size={24} />
+          </div>
           <div className="stat-content">
-            <h3>{stats.pending}</h3>
-            <p>Pendientes</p>
+            <h3>Pendientes</h3>
+            <p className="stat-value">{stats.pending}</p>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon">✓</div>
+        <div className="stat-card stat-green">
+          <div className="stat-icon">
+            <CheckCircle size={24} />
+          </div>
           <div className="stat-content">
-            <h3>{stats.approved}</h3>
-            <p>Aprobadas</p>
+            <h3>Aprobadas</h3>
+            <p className="stat-value">{stats.approved}</p>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon">✗</div>
+        <div className="stat-card stat-orange">
+          <div className="stat-icon">
+            <XCircle size={24} />
+          </div>
           <div className="stat-content">
-            <h3>{stats.rejected}</h3>
-            <p>Rechazadas</p>
+            <h3>Rechazadas</h3>
+            <p className="stat-value">{stats.rejected}</p>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon">📝</div>
+        <div className="stat-card stat-purple">
+          <div className="stat-icon">
+            <FileCheck size={24} />
+          </div>
           <div className="stat-content">
-            <h3>{stats.more_data}</h3>
-            <p>Más Datos</p>
+            <h3>Más Datos</h3>
+            <p className="stat-value">{stats.more_data}</p>
           </div>
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="filters-card">
-        <div className="filters-row">
+      <div className="filters-container">
+        <div className="filters-header">
+          <Filter size={20} />
+          <h3>Filtros de Búsqueda</h3>
+          <button 
+            className="btn btn-text"
+            onClick={resetFilters}
+          >
+            Limpiar filtros
+          </button>
+        </div>
+
+        <div className="filters-grid">
           <div className="filter-group">
             <label>Estado</label>
-            <select
+            <select 
               name="status"
               value={filters.status}
               onChange={handleFilterChange}
+              className="select-input"
             >
-              <option value="all">Todos los estados</option>
-              <option value="pendiente">Pendientes</option>
+              <option value="all">Todos</option>
+              <option value="pendiente_aprobacion">Pendientes</option>
               <option value="aprobado">Aprobadas</option>
               <option value="rechazado">Rechazadas</option>
               <option value="mas_datos">Más Datos</option>
@@ -273,269 +264,185 @@ const CertificationRequests = () => {
           </div>
 
           <div className="filter-group">
+            <label>Buscar</label>
+            <input 
+              type="text"
+              name="search"
+              value={filters.search}
+              onChange={handleFilterChange}
+              placeholder="Nombre, email..."
+              className="select-input"
+            />
+          </div>
+
+          <div className="filter-group">
             <label>Ordenar por</label>
-            <select
+            <select 
               name="sort_by"
               value={filters.sort_by}
               onChange={handleFilterChange}
+              className="select-input"
             >
               <option value="created_at">Fecha de solicitud</option>
-              <option value="requested_amount">Monto solicitado</option>
-              <option value="user_name">Nombre del usuario</option>
+              <option value="reviewed_at">Fecha de revisión</option>
+              <option value="user_name">Nombre</option>
             </select>
           </div>
 
           <div className="filter-group">
             <label>Orden</label>
-            <select
+            <select 
               name="sort_order"
               value={filters.sort_order}
               onChange={handleFilterChange}
+              className="select-input"
             >
               <option value="desc">Descendente</option>
               <option value="asc">Ascendente</option>
             </select>
           </div>
         </div>
-
-        <div className="filter-group search-group">
-          <label>Buscar</label>
-          <div className="search-input-wrapper">
-            <input
-              type="text"
-              name="search"
-              value={filters.search}
-              onChange={handleFilterChange}
-              placeholder="Buscar por nombre o email..."
-              className="search-input"
-            />
-            <i className="fas fa-search search-icon"></i>
-          </div>
-        </div>
       </div>
 
-      {/* Lista de solicitudes */}
-      <div className="requests-list">
-        {filteredRequests.map((request) => (
-          <div key={request.id} className="request-card">
-            <div className="request-header">
-              <div className="request-info">
-                <h4>{request.user_name}</h4>
-                <p className="request-email">{request.email}</p>
-                <div className="request-meta">
-                  <span>Solicitud #{request.id}</span>
-                  <span>•</span>
-                  <span>{format(new Date(request.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}</span>
-                </div>
-              </div>
-              <div className="request-status">
-                {getStatusBadge(request.status)}
-              </div>
-            </div>
+      {/* Tabla de Solicitudes */}
+      <div className="dashboard-section">
+        <div className="section-header">
+          <h2>Solicitudes ({filteredRequests.length})</h2>
+        </div>
 
-            <div className="request-content">
-              <div className="request-details">
-                <div className="detail-row">
-                  <span className="detail-label">Banco:</span>
-                  <span className="detail-value">{request.bank_name}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Monto Solicitado:</span>
-                  <span className="detail-value">
-                    ${request.financial_data?.requested_amount?.toLocaleString('es-AR') || 'No especificado'}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Teléfono:</span>
-                  <span className="detail-value">{request.phone || 'No proporcionado'}</span>
-                </div>
-              </div>
-
-              <div className="request-actions">
-                <button
-                  onClick={() => setSelectedRequest(request)}
-                  className="btn btn-outline btn-small"
-                >
-                  <i className="fas fa-eye"></i> Ver Detalles
-                </button>
-                
-                {request.status === 'pendiente' && (
-                  <div className="action-buttons">
-                    <button
-                      onClick={() => handleStatusUpdate(request.id, 'aprobado')}
-                      className="btn btn-success btn-small"
-                      disabled={actionLoading}
-                    >
-                      <i className="fas fa-check"></i> Aprobar
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(request.id, 'mas_datos')}
-                      className="btn btn-warning btn-small"
-                      disabled={actionLoading}
-                    >
-                      <i className="fas fa-info-circle"></i> Más Datos
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(request.id, 'rechazado')}
-                      className="btn btn-danger btn-small"
-                      disabled={actionLoading}
-                    >
-                      <i className="fas fa-times"></i> Rechazar
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+        {filteredRequests.length === 0 ? (
+          <div className="empty-state">
+            <FileCheck size={48} />
+            <p>No hay solicitudes {filters.status !== 'all' ? `con estado "${filters.status}"` : ''}</p>
+            {filters.status !== 'all' && (
+              <button onClick={resetFilters} className="btn btn-primary">
+                <Filter size={20} />
+                Limpiar Filtros
+              </button>
+            )}
           </div>
-        ))}
+        ) : (
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Solicitante</th>
+                  <th>Email</th>
+                  <th>Banco</th>
+                  <th>Estado</th>
+                  <th>Fecha Solicitud</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRequests.map((request) => (
+                  <tr key={request.id}>
+                    <td className="id-cell">#{request.id}</td>
+                    <td>
+                      <div className="cell-with-icon">
+                        <User size={16} />
+                        {request.user_name}
+                      </div>
+                    </td>
+                    <td className="cell-secondary">{request.email}</td>
+                    <td>{request.bank_name}</td>
+                    <td>{getStatusBadge(request.status)}</td>
+                    <td>
+                      <div className="cell-with-icon">
+                        <Calendar size={16} />
+                        {format(new Date(request.created_at), "dd/MM/yyyy", { locale: es })}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        <button 
+                          onClick={() => setSelectedRequest(request)}
+                          className="btn btn-sm btn-primary"
+                          title="Ver detalles"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Modal de detalles */}
       {selectedRequest && (
         <div className="modal-overlay" onClick={() => setSelectedRequest(null)}>
-          <div className="modal-content large" onClick={e => e.stopPropagation()}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Detalles de la Solicitud #{selectedRequest.id}</h3>
-              <button 
-                className="modal-close"
-                onClick={() => setSelectedRequest(null)}
-              >
-                &times;
-              </button>
+              <h2>Detalle de Solicitud #{selectedRequest.id}</h2>
+              <button onClick={() => setSelectedRequest(null)} className="btn btn-icon">×</button>
             </div>
-
+            
             <div className="modal-body">
-              <div className="detail-sections">
-                {/* Información del usuario */}
-                <div className="detail-section">
-                  <h4>
-                    <i className="fas fa-user"></i> Información del Solicitante
-                  </h4>
-                  <div className="detail-grid">
-                    <div className="detail-item">
-                      <span className="detail-label">Nombre:</span>
-                      <span className="detail-value">{selectedRequest.user_name}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-label">Email:</span>
-                      <span className="detail-value">{selectedRequest.email}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-label">Teléfono:</span>
-                      <span className="detail-value">{selectedRequest.phone || 'No proporcionado'}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-label">Estado:</span>
-                      <span className="detail-value">{getStatusBadge(selectedRequest.status)}</span>
-                    </div>
+              <div className="detail-section">
+                <h3>Información Personal</h3>
+                <div className="detail-grid">
+                  <div className="detail-item">
+                    <strong>Nombre:</strong> {selectedRequest.user_name}
                   </div>
-                </div>
-
-                {/* Datos financieros */}
-                <div className="detail-section">
-                  <h4>
-                    <i className="fas fa-chart-line"></i> Datos Financieros
-                  </h4>
-                  <div className="financial-details">
-                    {formatFinancialData(selectedRequest.financial_data)}
+                  <div className="detail-item">
+                    <strong>Email:</strong> {selectedRequest.email}
                   </div>
-                </div>
-
-                {/* Historial de la solicitud */}
-                <div className="detail-section">
-                  <h4>
-                    <i className="fas fa-history"></i> Historial
-                  </h4>
-                  <div className="timeline">
-                    <div className="timeline-item">
-                      <div className="timeline-date">
-                        {format(new Date(selectedRequest.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
-                      </div>
-                      <div className="timeline-content">
-                        <strong>Solicitud enviada</strong>
-                        <p>El usuario envió la solicitud de certificación</p>
-                      </div>
-                    </div>
-
-                    {selectedRequest.reviewed_at && (
-                      <div className="timeline-item">
-                        <div className="timeline-date">
-                          {format(new Date(selectedRequest.reviewed_at), 'dd/MM/yyyy HH:mm', { locale: es })}
-                        </div>
-                        <div className="timeline-content">
-                          <strong>Solicitud {getStatusLabel(selectedRequest.status)}</strong>
-                          <p>Revisado por el banco</p>
-                          {selectedRequest.notes && (
-                            <div className="timeline-notes">
-                              <strong>Notas:</strong> {selectedRequest.notes}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                  <div className="detail-item">
+                    <strong>Teléfono:</strong> {selectedRequest.phone || 'No proporcionado'}
+                  </div>
+                  <div className="detail-item">
+                    <strong>Estado:</strong> {getStatusBadge(selectedRequest.status)}
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="modal-footer">
-              <button 
-                onClick={() => setSelectedRequest(null)}
-                className="btn btn-outline"
-              >
-                Cerrar
-              </button>
-              
-              {selectedRequest.status === 'pendiente' && (
-                <div className="action-buttons">
-                  <button
-                    onClick={() => {
-                      const notes = prompt('¿Agregar notas para la aprobación? (opcional)');
-                      handleStatusUpdate(selectedRequest.id, 'aprobado', notes);
-                    }}
+              <div className="detail-section">
+                <h3>Datos Financieros</h3>
+                <div className="detail-grid">
+                  <div className="detail-item">
+                    <strong>Banco:</strong> {selectedRequest.bank_name}
+                  </div>
+                  <div className="detail-item">
+                    <strong>Fecha de Solicitud:</strong> {format(new Date(selectedRequest.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                  </div>
+                </div>
+              </div>
+
+              {selectedRequest.status === 'pendiente_aprobacion' && (
+                <div className="modal-actions">
+                  <button 
+                    onClick={() => handleStatusUpdate(selectedRequest.id, 'aprobado')}
                     className="btn btn-success"
                     disabled={actionLoading}
                   >
-                    <i className="fas fa-check"></i> Aprobar
+                    <CheckCircle size={16} />
+                    Aprobar
                   </button>
-                  <button
-                    onClick={() => {
-                      const notes = prompt('¿Qué información adicional necesita?');
-                      if (notes) {
-                        handleStatusUpdate(selectedRequest.id, 'mas_datos', notes);
-                      }
-                    }}
-                    className="btn btn-warning"
-                    disabled={actionLoading}
-                  >
-                    <i className="fas fa-info-circle"></i> Solicitar Más Datos
-                  </button>
-                  <button
-                    onClick={() => {
-                      const notes = prompt('¿Motivo del rechazo?');
-                      if (notes) {
-                        handleStatusUpdate(selectedRequest.id, 'rechazado', notes);
-                      }
-                    }}
+                  <button 
+                    onClick={() => handleStatusUpdate(selectedRequest.id, 'rechazado')}
                     className="btn btn-danger"
                     disabled={actionLoading}
                   >
-                    <i className="fas fa-times"></i> Rechazar
+                    <XCircle size={16} />
+                    Rechazar
+                  </button>
+                  <button 
+                    onClick={() => handleStatusUpdate(selectedRequest.id, 'mas_datos')}
+                    className="btn btn-secondary"
+                    disabled={actionLoading}
+                  >
+                    <FileCheck size={16} />
+                    Solicitar Más Datos
                   </button>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {filteredRequests.length === 0 && (
-        <div className="empty-state">
-          <div className="empty-icon">
-            <i className="fas fa-file-alt"></i>
-          </div>
-          <h3>No se encontraron solicitudes</h3>
-          <p>No hay solicitudes que coincidan con tus filtros</p>
         </div>
       )}
     </div>

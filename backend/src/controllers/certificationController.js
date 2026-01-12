@@ -96,12 +96,15 @@ const certificationController = {
     try {
       // Obtener el nombre del banco del usuario
       const user = await User.findById(req.userId);
-      const bank_name = user.name; // Asumiendo que el nombre del usuario banco es el nombre del banco
+      if (!user.bank_name) {
+        return res.status(400).json({ error: 'Usuario banco no tiene banco asignado' });
+      }
+      const bank_name = user.bank_name;
 
       const certifications = await Certification.findByBank(bank_name);
       
       // Filtrar solo pendientes
-      const pending = certifications.filter(cert => cert.status === 'pendiente');
+      const pending = certifications.filter(cert => cert.status === 'pendiente_aprobacion');
       
       res.json(pending);
     } catch (error) {
@@ -114,9 +117,14 @@ const certificationController = {
   async getBankAllCertifications(req, res) {
     try {
       const user = await User.findById(req.userId);
-      const bank_name = user.name;
+      if (!user.bank_name) {
+        return res.status(400).json({ error: 'Usuario banco no tiene banco asignado' });
+      }
+      const bank_name = user.bank_name;
 
+      console.log('getBankAllCertifications - bank_name:', bank_name);
       const certifications = await Certification.findByBank(bank_name);
+      console.log('getBankAllCertifications - certifications found:', certifications.length);
       res.json(certifications);
     } catch (error) {
       console.error('Error fetching all bank certifications:', error);
@@ -228,7 +236,7 @@ const certificationController = {
       
       // Obtener nombre del banco del usuario
       const userResult = await pool.query(
-        'SELECT name FROM users WHERE id = $1',
+        'SELECT bank_name FROM users WHERE id = $1',
         [bank_user_id]
       );
       
@@ -236,7 +244,11 @@ const certificationController = {
         return res.status(404).json({ error: 'Banco no encontrado' });
       }
       
-      const bank_name = userResult.rows[0].name;
+      if (!userResult.rows[0].bank_name) {
+        return res.status(400).json({ error: 'Usuario banco no tiene banco asignado' });
+      }
+      
+      const bank_name = userResult.rows[0].bank_name;
 
       // Solicitudes pendientes
       const pendingResult = await pool.query(
