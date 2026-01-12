@@ -23,9 +23,10 @@ const countries = [
   'Portugal', 'República Dominicana', 'Uruguay', 'Venezuela', 'Otros'
 ];
 
-const CertificationForm = () => {
+const CertificationForm = ({ onSuccess }) => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [dateInput, setDateInput] = useState(''); // Estado local para el input de fecha
   const [formData, setFormData] = useState({
     bank_name: '',
     personal_info: {
@@ -103,7 +104,13 @@ const CertificationForm = () => {
       await api.applyCertification(formDataToSend);
       
       alert('Solicitud enviada exitosamente. Tu estado aparecerá como pendiente de aprobación.');
-      navigate('/comprador');
+      
+      // Si hay una función onSuccess, llamarla en lugar de navegar
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        navigate('/comprador');
+      }
     } catch (error) {
       console.error('Error submitting certification:', error);
       alert('Error al enviar la solicitud');
@@ -127,6 +134,12 @@ const CertificationForm = () => {
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
   };
 
   const renderStep = () => {
@@ -174,7 +187,91 @@ const CertificationForm = () => {
               </div>
               <div className="form-group">
                 <label>Fecha de Nacimiento *</label>
-                <input type="date" value={formData.personal_info.birth_date} onChange={(e) => handleChange('personal_info.birth_date', e.target.value)} max={getTodayDate()} required />
+                <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input 
+                    type="text" 
+                    value={dateInput || (formData.personal_info.birth_date ? formatDateForDisplay(formData.personal_info.birth_date) : '')} 
+                    onChange={(e) => {
+                      let value = e.target.value;
+                      // Permitir solo números y barras
+                      value = value.replace(/[^\d/]/g, '');
+                      
+                      // Limitar a 10 caracteres
+                      if (value.length > 10) return;
+                      
+                      // Guardar en estado local para permitir escritura
+                      setDateInput(value);
+                      
+                      // Auto-formatear: agregar barras automáticamente
+                      let formatted = value;
+                      if (value.length === 2 && !value.includes('/')) {
+                        formatted = value + '/';
+                        setDateInput(formatted);
+                      } else if (value.length === 5 && value.charAt(4) !== '/' && value.split('/').length === 2) {
+                        formatted = value + '/';
+                        setDateInput(formatted);
+                      }
+                      
+                      // Si tiene formato completo dd/mm/yyyy, convertir a yyyy-mm-dd y guardar
+                      if (formatted.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                        const [day, month, year] = formatted.split('/');
+                        handleChange('personal_info.birth_date', `${year}-${month}-${day}`);
+                        setDateInput(''); // Limpiar estado local, ahora usa formData
+                      } else if (value.length === 0) {
+                        handleChange('personal_info.birth_date', '');
+                      }
+                    }}
+                    placeholder="dd/mm/aaaa"
+                    maxLength="10"
+                    required
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const dateInput = e.currentTarget.nextElementSibling;
+                      dateInput.showPicker?.();
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      border: '1px solid var(--light-gray)',
+                      borderRadius: '6px',
+                      backgroundColor: 'white',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '40px',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f5f5f5';
+                      e.currentTarget.style.borderColor = 'var(--primary-color)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                      e.currentTarget.style.borderColor = 'var(--light-gray)';
+                    }}
+                    title="Abrir calendario"
+                  >
+                    📅
+                  </button>
+                  <input 
+                    type="date" 
+                    value={formData.personal_info.birth_date} 
+                    onChange={(e) => handleChange('personal_info.birth_date', e.target.value)} 
+                    max={getTodayDate()} 
+                    required
+                    style={{
+                      position: 'absolute',
+                      opacity: 0,
+                      width: 0,
+                      height: 0,
+                      pointerEvents: 'none'
+                    }}
+                  />
+                </div>
               </div>
               <div className="form-group">
                 <label>Nacionalidad *</label>
@@ -260,6 +357,10 @@ const CertificationForm = () => {
               <div className="summary-item">
                 <strong>DNI:</strong>
                 <span>{formData.personal_info.dni}</span>
+              </div>
+              <div className="summary-item">
+                <strong>Fecha de Nacimiento:</strong>
+                <span>{formatDateForDisplay(formData.personal_info.birth_date)}</span>
               </div>
               <div className="summary-item">
                 <strong>Nacionalidad:</strong>

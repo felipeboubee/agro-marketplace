@@ -22,6 +22,8 @@ const LoteDetail = () => {
   });
   const [user, setUser] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [modalImageIndex, setModalImageIndex] = useState(0);
 
   useEffect(() => {
     fetchLoteDetails();
@@ -213,8 +215,12 @@ const LoteDetail = () => {
             <span className="location">
               <i className="fas fa-map-marker-alt"></i> {lote.location}
             </span>
-            <span className="status-badge status-{lote.status}">
-              {lote.status === 'ofertado' ? 'Disponible' : lote.status}
+            <span className={`status-badge status-${lote.status}`}>
+              {lote.status === 'ofertado' ? 'Disponible' : 
+               lote.status === 'completo' ? 'Vendido' :
+               lote.status === 'cancelado' ? 'Cancelado' :
+               lote.status === 'borrador' ? 'Borrador' :
+               lote.status}
             </span>
           </div>
         </div>
@@ -237,11 +243,27 @@ const LoteDetail = () => {
       {/* Galería de imágenes */}
       {lote.photos && lote.photos.length > 0 && (
         <div className="image-gallery">
-          <div className="main-image">
+          <div className="main-image" onClick={() => {
+            setShowImageModal(true);
+            setModalImageIndex(activeImage);
+          }}>
             <img 
-              src={lote.photos[activeImage]} 
+              src={`http://localhost:5000${lote.photos[activeImage]}`}
               alt={`Lote ${lote.id} - ${activeImage + 1}`}
+              style={{ cursor: 'pointer', objectFit: 'contain', width: '100%', height: '500px', backgroundColor: '#f5f5f5' }}
             />
+            <div style={{ 
+              position: 'absolute', 
+              bottom: '10px', 
+              right: '10px', 
+              background: 'rgba(0,0,0,0.6)', 
+              color: 'white', 
+              padding: '5px 10px', 
+              borderRadius: '5px',
+              fontSize: '14px'
+            }}>
+              🔍 Click para ampliar
+            </div>
           </div>
           <div className="thumbnail-list">
             {lote.photos.map((photo, index) => (
@@ -249,10 +271,127 @@ const LoteDetail = () => {
                 key={index}
                 className={`thumbnail ${index === activeImage ? 'active' : ''}`}
                 onClick={() => setActiveImage(index)}
+                style={{ cursor: 'pointer' }}
               >
-                <img src={photo} alt={`Thumbnail ${index + 1}`} />
+                <img 
+                  src={`http://localhost:5000${photo}`} 
+                  alt={`Thumbnail ${index + 1}`}
+                  style={{ objectFit: 'cover', width: '100%', height: '80px' }}
+                />
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de imagen ampliada */}
+      {showImageModal && lote.photos && (
+        <div 
+          className="image-modal-overlay" 
+          onClick={() => setShowImageModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            cursor: 'zoom-out'
+          }}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowImageModal(false);
+            }}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              fontSize: '24px',
+              cursor: 'pointer',
+              zIndex: 10000
+            }}
+          >
+            ×
+          </button>
+          
+          {modalImageIndex > 0 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setModalImageIndex(modalImageIndex - 1);
+              }}
+              style={{
+                position: 'absolute',
+                left: '20px',
+                background: 'white',
+                border: 'none',
+                borderRadius: '50%',
+                width: '50px',
+                height: '50px',
+                fontSize: '24px',
+                cursor: 'pointer',
+                zIndex: 10000
+              }}
+            >
+              ‹
+            </button>
+          )}
+          
+          <img
+            src={`http://localhost:5000${lote.photos[modalImageIndex]}`}
+            alt={`Lote ${lote.id} - Imagen ${modalImageIndex + 1}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '90%',
+              maxHeight: '90%',
+              objectFit: 'contain',
+              cursor: 'default'
+            }}
+          />
+          
+          {modalImageIndex < lote.photos.length - 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setModalImageIndex(modalImageIndex + 1);
+              }}
+              style={{
+                position: 'absolute',
+                right: '20px',
+                background: 'white',
+                border: 'none',
+                borderRadius: '50%',
+                width: '50px',
+                height: '50px',
+                fontSize: '24px',
+                cursor: 'pointer',
+                zIndex: 10000
+              }}
+            >
+              ›
+            </button>
+          )}
+          
+          <div style={{
+            position: 'absolute',
+            bottom: '20px',
+            background: 'rgba(255, 255, 255, 0.9)',
+            padding: '10px 20px',
+            borderRadius: '20px',
+            fontSize: '16px'
+          }}>
+            {modalImageIndex + 1} / {lote.photos.length}
           </div>
         </div>
       )}
@@ -353,18 +492,6 @@ const LoteDetail = () => {
               <div className="detail-row">
                 <span className="detail-label">Moneda:</span>
                 <span className="detail-value">{lote.currency || 'ARS'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Certificado Sanitario:</span>
-                <span className="detail-value">
-                  {lote.health_certificate ? '✅ Sí' : '❌ No'}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Registro de Vacunación:</span>
-                <span className="detail-value">
-                  {lote.vaccination_records ? '✅ Sí' : '❌ No'}
-                </span>
               </div>
             </div>
           </div>
@@ -500,13 +627,20 @@ const LoteDetail = () => {
             <i className="fas fa-video"></i> Video del Lote
           </h3>
           <div className="video-container">
-            <iframe
-              src={lote.video_url.replace('watch?v=', 'embed/')}
-              title="Video del lote"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            ></iframe>
+            {lote.video_url.includes('youtube.com') || lote.video_url.includes('youtu.be') ? (
+              <iframe
+                src={lote.video_url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
+                title="Video del lote"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            ) : (
+              <video controls>
+                <source src={`http://localhost:5000${lote.video_url}`} type="video/mp4" />
+                Tu navegador no soporta el elemento de video.
+              </video>
+            )}
           </div>
         </div>
       )}

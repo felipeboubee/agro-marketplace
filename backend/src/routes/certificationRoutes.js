@@ -68,6 +68,15 @@ router.get('/bank/all',
   certificationController.getBankAllCertifications
 );
 
+// @route   GET /api/certifications/bank/stats
+// @desc    Get bank statistics
+// @access  Private/Banco
+router.get('/bank/stats', 
+  auth, 
+  roleCheck('banco'), 
+  certificationController.getBankStats
+);
+
 // @route   PUT /api/certifications/:id/status
 // @desc    Update certification status
 // @access  Private/Banco

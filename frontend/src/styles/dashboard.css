@@ -418,6 +418,13 @@
 }
 
 /* Tablas */
+.table-container {
+  overflow-x: auto;
+  border-radius: 12px;
+  background: white;
+  box-shadow: var(--shadow);
+}
+
 .data-table-container {
   overflow-x: auto;
   border-radius: 8px;
@@ -427,21 +434,24 @@
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 800px;
+  min-width: 1200px;
 }
 
 .data-table th {
   background-color: var(--light-color);
-  padding: 16px;
-  text-align: left;
+  padding: 16px 12px;
+  text-align: center;
   font-weight: 600;
   color: var(--dark-color);
   border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
 }
 
 .data-table td {
-  padding: 16px;
+  padding: 16px 12px;
   border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+  text-align: center;
 }
 
 .data-table tr:hover {
@@ -454,26 +464,60 @@
 
 /* Estado */
 .status-badge {
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   text-transform: capitalize;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
 }
 
+/* Status for transactions */
 .status-pending {
   background-color: rgba(248, 150, 30, 0.1);
   color: var(--warning-color);
+  border-color: rgba(248, 150, 30, 0.3);
 }
 
 .status-completed {
   background-color: rgba(76, 201, 240, 0.1);
   color: var(--success-color);
+  border-color: rgba(76, 201, 240, 0.3);
 }
 
 .status-cancelled {
   background-color: rgba(247, 37, 133, 0.1);
   color: var(--danger-color);
+  border-color: rgba(247, 37, 133, 0.3);
+}
+
+/* Status for lotes */
+.status-ofertado {
+  background-color: rgba(76, 201, 240, 0.15);
+  color: #0c8bb3;
+  border-color: rgba(76, 201, 240, 0.4);
+}
+
+.status-completo {
+  background-color: rgba(46, 204, 113, 0.15);
+  color: #27ae60;
+  border-color: rgba(46, 204, 113, 0.4);
+}
+
+.status-cancelado {
+  background-color: rgba(231, 76, 60, 0.15);
+  color: #c0392b;
+  border-color: rgba(231, 76, 60, 0.4);
+}
+
+.status-borrador {
+  background-color: rgba(149, 165, 166, 0.15);
+  color: #7f8c8d;
+  border-color: rgba(149, 165, 166, 0.4);
 }
 
 /* Usuarios */
@@ -800,6 +844,165 @@
 }
 
 /* ============================================
+   QUICK ACTIONS SECTION
+   ============================================ */
+
+.actions-section {
+  margin-top: 32px;
+  margin-bottom: 32px;
+}
+
+.actions-section h2 {
+  font-size: 20px;
+  color: var(--dark-color);
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.action-card {
+  background: white;
+  border-radius: 12px;
+  padding: 28px 24px;
+  box-shadow: var(--shadow);
+  border: 2px solid var(--border-color);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.action-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--primary-color);
+  box-shadow: 0 8px 20px rgba(67, 97, 238, 0.15);
+}
+
+.action-card svg {
+  color: var(--primary-color);
+  transition: transform 0.3s ease;
+}
+
+.action-card:hover svg {
+  transform: scale(1.1);
+}
+
+.action-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--dark-color);
+  margin: 0;
+}
+
+.action-card p {
+  font-size: 14px;
+  color: #6c757d;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Banner Styles */
+.info-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
+}
+
+.success-banner {
+  background: linear-gradient(135deg, rgba(76, 201, 240, 0.1) 0%, rgba(67, 97, 238, 0.05) 100%);
+  border-left: 4px solid var(--success-color);
+}
+
+.warning-banner {
+  background: linear-gradient(135deg, rgba(248, 150, 30, 0.1) 0%, rgba(247, 37, 133, 0.05) 100%);
+  border-left: 4px solid var(--warning-color);
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.banner-content svg {
+  flex-shrink: 0;
+  color: var(--primary-color);
+}
+
+.warning-banner svg {
+  color: var(--warning-color);
+}
+
+.banner-text {
+  flex: 1;
+}
+
+.banner-text h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--dark-color);
+  margin-bottom: 8px;
+}
+
+.banner-text p {
+  font-size: 14px;
+  color: #6c757d;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.page-header h1 {
+  font-size: 28px;
+  color: var(--dark-color);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.page-header p {
+  color: #6c757d;
+  font-size: 16px;
+  margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+  .actions-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .banner-content {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+/* ============================================
    MY LOTES SPECIFIC STYLES
    ============================================ */
 
@@ -831,6 +1034,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-content: center;
 }
 
 .cell-primary {
@@ -839,12 +1043,12 @@
 }
 
 .cell-secondary {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--gray);
 }
 
 .number-cell {
-  text-align: right;
+  text-align: center;
   font-weight: 600;
   color: var(--dark-color);
 }
@@ -852,12 +1056,14 @@
 .price-cell {
   font-weight: 700;
   color: var(--primary-color);
+  text-align: center;
 }
 
 .id-cell {
   font-family: monospace;
   color: var(--gray);
   font-weight: 600;
+  text-align: center;
 }
 
 /* Action Buttons in Table */
@@ -865,7 +1071,8 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .btn-sm {
@@ -879,13 +1086,19 @@
 }
 
 /* Responsive Table */
-@media (max-width: 1024px) {
+@media (max-width: 1400px) {
   .table-container {
     overflow-x: auto;
   }
   
   .data-table {
-    min-width: 900px;
+    min-width: 1400px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .data-table {
+    min-width: 1200px;
   }
 }
 

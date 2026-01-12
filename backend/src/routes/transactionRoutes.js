@@ -22,6 +22,15 @@ router.get('/buyer',
   transactionController.getBuyerTransactions
 );
 
+// @route   GET /api/transactions/buyer/stats
+// @desc    Get buyer's statistics
+// @access  Private/Comprador
+router.get('/buyer/stats', 
+  auth, 
+  roleCheck('comprador'), 
+  transactionController.getBuyerStats
+);
+
 // @route   GET /api/transactions/seller
 // @desc    Get seller's transactions
 // @access  Private/Vendedor

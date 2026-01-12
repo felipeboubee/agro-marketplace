@@ -66,6 +66,62 @@ const transactionController = {
     }
   },
 
+  async getBuyerStats(req, res) {
+    try {
+      const buyer_id = req.userId;
+      const pool = require('../config/database');
+
+      // Total de compras
+      const totalResult = await pool.query(
+        'SELECT COUNT(*) as count FROM transactions WHERE buyer_id = $1',
+        [buyer_id]
+      );
+
+      // Compras activas (pendiente o aprobado)
+      const activeResult = await pool.query(
+        `SELECT COUNT(*) as count FROM transactions 
+         WHERE buyer_id = $1 AND status IN ('pendiente', 'aprobado')`,
+        [buyer_id]
+      );
+
+      // Transacciones completadas
+      const completedResult = await pool.query(
+        `SELECT COUNT(*) as count FROM transactions 
+         WHERE buyer_id = $1 AND status = 'completo'`,
+        [buyer_id]
+      );
+
+      // Total gastado (suma de transacciones completadas)
+      const spentResult = await pool.query(
+        `SELECT COALESCE(SUM(price * quantity), 0) as total 
+         FROM transactions 
+         WHERE buyer_id = $1 AND status = 'completo'`,
+        [buyer_id]
+      );
+
+      // Estado de certificación
+      const certResult = await pool.query(
+        `SELECT status FROM certifications 
+         WHERE user_id = $1 AND status = 'aprobado' 
+         ORDER BY created_at DESC LIMIT 1`,
+        [buyer_id]
+      );
+
+      const certificationStatus = certResult.rows.length > 0 ? 'certified' : 'no_certified';
+
+      res.json({
+        totalPurchases: parseInt(totalResult.rows[0].count),
+        activePurchases: parseInt(activeResult.rows[0].count),
+        completedTransactions: parseInt(completedResult.rows[0].count),
+        totalSpent: parseFloat(spentResult.rows[0].total),
+        certificationStatus
+      });
+    } catch (error) {
+      console.error('Error fetching buyer stats:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  },
+
   async getSellerTransactions(req, res) {
     try {
       const transactions = await Transaction.findBySeller(req.userId);

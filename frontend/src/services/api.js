@@ -151,6 +151,10 @@ class ApiService {
     return this.get(`/certifications/bank/all${queryParams ? `?${queryParams}` : ''}`);
   }
 
+  getBankStats() {
+    return this.get('/certifications/bank/stats');
+  }
+
   updateCertificationStatus(id, status, notes = '') {
     return this.put(`/certifications/${id}/status`, { status, notes });
   }
@@ -162,6 +166,10 @@ class ApiService {
   getTransactions(params = {}) {
     const queryParams = new URLSearchParams(params).toString();
     return this.get(`/transactions${queryParams ? `?${queryParams}` : ''}`);
+  }
+
+  getBuyerStats() {
+    return this.get('/transactions/buyer/stats');
   }
 
   createTransaction(data) {

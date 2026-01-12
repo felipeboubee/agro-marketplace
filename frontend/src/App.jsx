@@ -4,9 +4,9 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ProtectedRoute from './components/common/ProtectedRoute';
-import BuyerDashboard from './components/comprador/BuyerDashboard';
+import BuyerLayout from './components/comprador/BuyerLayout';
 import SellerLayout from './components/vendedor/SellerLayout';
-import BankDashboard from './components/banco/BankDashboard';
+import BankLayout from './components/banco/BankLayout';
 import AdminLayout from './components/admin/AdminLayout';
 
 function App() {
@@ -21,7 +21,7 @@ function App() {
         {/* Protected Routes */}
         <Route path="/comprador/*" element={
           <ProtectedRoute allowedRoles={['comprador']}>
-            <BuyerDashboard />
+            <BuyerLayout />
           </ProtectedRoute>
         } />
         
@@ -33,11 +33,10 @@ function App() {
         
         <Route path="/banco/*" element={
           <ProtectedRoute allowedRoles={['banco']}>
-            <BankDashboard />
+            <BankLayout />
           </ProtectedRoute>
         } />
         
-        {/* CAMBIA ESTA RUTA ADMIN: */}
         <Route path="/admin/*" element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminLayout />

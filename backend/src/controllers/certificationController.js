@@ -48,13 +48,18 @@ const certificationController = {
         income_proof_path = `/uploads/certifications/${req.file.filename}`;
       }
 
+      // Parsear los JSON strings si vienen como string
+      const parsedPersonalInfo = typeof personal_info === 'string' ? JSON.parse(personal_info) : personal_info;
+      const parsedEmploymentInfo = typeof employment_info === 'string' ? JSON.parse(employment_info) : employment_info;
+      const parsedFinancialInfo = typeof financial_info === 'string' ? JSON.parse(financial_info) : financial_info;
+
       // Crear la certificación con nuevo formato
       const certification = await Certification.create({
         user_id,
         bank_name,
-        personal_info: personal_info ? JSON.parse(personal_info) : {},
-        employment_info: employment_info ? JSON.parse(employment_info) : {},
-        financial_info: financial_info ? JSON.parse(financial_info) : {},
+        personal_info: parsedPersonalInfo || {},
+        employment_info: parsedEmploymentInfo || {},
+        financial_info: parsedFinancialInfo || {},
         income_proof_path,
         status: 'pendiente_aprobacion'
       });
@@ -212,6 +217,87 @@ const certificationController = {
       });
     } catch (error) {
       console.error('Error updating certification status:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  },
+
+  // Obtener estadísticas del banco
+  async getBankStats(req, res) {
+    try {
+      const bank_user_id = req.userId;
+      
+      // Obtener nombre del banco del usuario
+      const userResult = await pool.query(
+        'SELECT name FROM users WHERE id = $1',
+        [bank_user_id]
+      );
+      
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Banco no encontrado' });
+      }
+      
+      const bank_name = userResult.rows[0].name;
+
+      // Solicitudes pendientes
+      const pendingResult = await pool.query(
+        `SELECT COUNT(*) as count FROM certifications 
+         WHERE bank_name = $1 AND status = 'pendiente_aprobacion'`,
+        [bank_name]
+      );
+
+      // Certificaciones aprobadas
+      const approvedResult = await pool.query(
+        `SELECT COUNT(*) as count FROM certifications 
+         WHERE bank_name = $1 AND status = 'aprobado'`,
+        [bank_name]
+      );
+
+      // Volumen total certificado (suma de requested_amount de aprobados)
+      const volumeResult = await pool.query(
+        `SELECT COALESCE(SUM(requested_amount), 0) as total FROM certifications 
+         WHERE bank_name = $1 AND status = 'aprobado'`,
+        [bank_name]
+      );
+
+      // Clientes certificados únicos
+      const clientsResult = await pool.query(
+        `SELECT COUNT(DISTINCT user_id) as count FROM certifications 
+         WHERE bank_name = $1 AND status = 'aprobado'`,
+        [bank_name]
+      );
+
+      // Tasa de aprobación
+      const totalResult = await pool.query(
+        `SELECT COUNT(*) as total FROM certifications WHERE bank_name = $1`,
+        [bank_name]
+      );
+      
+      const total = parseInt(totalResult.rows[0].total);
+      const approved = parseInt(approvedResult.rows[0].count);
+      const approvalRate = total > 0 ? Math.round((approved / total) * 100) : 0;
+
+      // Tiempo promedio de respuesta (días)
+      const avgTimeResult = await pool.query(
+        `SELECT AVG(EXTRACT(DAY FROM (reviewed_at - created_at))) as avg_days 
+         FROM certifications 
+         WHERE bank_name = $1 AND reviewed_at IS NOT NULL`,
+        [bank_name]
+      );
+
+      const avgResponseTime = avgTimeResult.rows[0].avg_days 
+        ? Math.round(parseFloat(avgTimeResult.rows[0].avg_days))
+        : 0;
+
+      res.json({
+        pendingRequests: parseInt(pendingResult.rows[0].count),
+        approvedCertifications: approved,
+        totalVolume: parseFloat(volumeResult.rows[0].total),
+        certifiedClients: parseInt(clientsResult.rows[0].count),
+        approvalRate,
+        avgResponseTime
+      });
+    } catch (error) {
+      console.error('Error fetching bank stats:', error);
       res.status(500).json({ error: 'Error interno del servidor' });
     }
   },
