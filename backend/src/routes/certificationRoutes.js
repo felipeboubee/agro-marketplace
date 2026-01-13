@@ -50,6 +50,16 @@ router.get('/my',
   certificationController.getUserCertifications
 );
 
+// @route   PUT /api/certifications/:id
+// @desc    Update certification (when bank requests more data)
+// @access  Private/Comprador
+router.put('/:id', 
+  auth, 
+  roleCheck('comprador'),
+  upload.single('income_proof'),
+  certificationController.updateCertification
+);
+
 // @route   GET /api/certifications/bank/pending
 // @desc    Get pending certifications for bank
 // @access  Private/Banco

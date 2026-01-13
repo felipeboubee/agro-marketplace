@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileCheck, Clock, CheckCircle, XCircle, Plus } from 'lucide-react';
+import { FileCheck, Clock, CheckCircle, XCircle, Plus, Edit } from 'lucide-react';
 import { api } from '../../services/api';
 import CertificationForm from './CertificationForm';
 import '../../styles/dashboard.css';
@@ -8,6 +8,7 @@ export default function MyCertifications() {
   const [certifications, setCertifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingCertification, setEditingCertification] = useState(null);
 
   useEffect(() => {
     fetchCertifications();
@@ -28,12 +29,13 @@ export default function MyCertifications() {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      pending: { label: 'Pendiente', className: 'status-badge status-pending', icon: <Clock size={14} /> },
-      approved: { label: 'Aprobada', className: 'status-badge status-completed', icon: <CheckCircle size={14} /> },
-      rejected: { label: 'Rechazada', className: 'status-badge status-cancelled', icon: <XCircle size={14} /> }
+      'pendiente_aprobacion': { label: 'Pendiente', className: 'status-badge status-pendiente', icon: <Clock size={14} /> },
+      'aprobado': { label: 'Aprobada', className: 'status-badge status-aprobado', icon: <CheckCircle size={14} /> },
+      'rechazado': { label: 'Rechazada', className: 'status-badge status-rechazado', icon: <XCircle size={14} /> },
+      'mas_datos': { label: 'Más Datos', className: 'status-badge status-mas-datos', icon: <FileCheck size={14} /> }
     };
     
-    const config = statusConfig[status] || statusConfig.pending;
+    const config = statusConfig[status] || statusConfig['pendiente_aprobacion'];
     return (
       <span className={config.className}>
         {config.icon}
@@ -44,7 +46,13 @@ export default function MyCertifications() {
 
   const handleFormSuccess = () => {
     setShowForm(false);
+    setEditingCertification(null);
     fetchCertifications();
+  };
+
+  const handleEditCertification = (cert) => {
+    setEditingCertification(cert);
+    setShowForm(true);
   };
 
   if (loading) {
@@ -63,16 +71,34 @@ export default function MyCertifications() {
         <div className="page-header">
           <h1>
             <FileCheck size={32} />
-            Nueva Certificación Financiera
+            {editingCertification ? 'Actualizar Certificación Financiera' : 'Nueva Certificación Financiera'}
           </h1>
           <button 
             className="btn btn-secondary"
-            onClick={() => setShowForm(false)}
+            onClick={() => {
+              setShowForm(false);
+              setEditingCertification(null);
+            }}
           >
             Volver a Mis Certificaciones
           </button>
         </div>
-        <CertificationForm onSuccess={handleFormSuccess} />
+        {editingCertification && (
+          <div className="info-banner">
+            <FileCheck size={24} />
+            <div>
+              <h3>Actualizar Información</h3>
+              <p>El banco ha solicitado información adicional. Por favor, revisa y actualiza los datos necesarios.</p>
+              {editingCertification.notes && (
+                <p style={{ marginTop: '8px', fontWeight: 'bold' }}>Observaciones: {editingCertification.notes}</p>
+              )}
+            </div>
+          </div>
+        )}
+        <CertificationForm 
+          onSuccess={handleFormSuccess} 
+          editingCertification={editingCertification}
+        />
       </div>
     );
   }
@@ -93,9 +119,9 @@ export default function MyCertifications() {
     );
   }
 
-  // Obtener certificaciones aprobadas y pendientes/rechazadas
-  const approvedCertifications = certifications.filter(cert => cert.status === 'approved');
-  const pendingOrRejectedCertifications = certifications.filter(cert => cert.status !== 'approved');
+  // Obtener certificaciones aprobadas y otras
+  const approvedCertifications = certifications.filter(cert => cert.status === 'aprobado');
+  const otherCertifications = certifications.filter(cert => cert.status !== 'aprobado');
 
   return (
     <div className="dashboard-container">
@@ -113,7 +139,7 @@ export default function MyCertifications() {
         </button>
       </div>
 
-      {/* Certificaciones Aprobadas */}
+      {/* Certificaciones Aprobadas - Mostrar como tabla */}
       {approvedCertifications.length > 0 && (
         <div className="dashboard-section">
           <div className="section-header">
@@ -121,31 +147,6 @@ export default function MyCertifications() {
               <CheckCircle size={24} />
               Certificaciones Aprobadas
             </h2>
-          </div>
-          <div className="stats-grid">
-            {approvedCertifications.map((cert) => (
-              <div key={cert.id} className="stat-card stat-green">
-                <div className="stat-icon">
-                  <CheckCircle size={32} />
-                </div>
-                <div className="stat-content">
-                  <h3>{cert.bank_name}</h3>
-                  <p className="stat-value">Certificado</p>
-                  <p className="cell-secondary">
-                    Aprobado el {new Date(cert.reviewed_at).toLocaleDateString('es-AR')}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Certificaciones Pendientes o Rechazadas */}
-      {pendingOrRejectedCertifications.length > 0 && (
-        <div className="dashboard-section">
-          <div className="section-header">
-            <h2>Estado de Solicitudes</h2>
           </div>
           <div className="table-container">
             <table className="data-table">
@@ -155,12 +156,11 @@ export default function MyCertifications() {
                   <th>Banco</th>
                   <th>Estado</th>
                   <th>Fecha Solicitud</th>
-                  <th>Fecha Respuesta</th>
-                  <th>Observaciones</th>
+                  <th>Fecha Aprobación</th>
                 </tr>
               </thead>
               <tbody>
-                {pendingOrRejectedCertifications.map((cert) => (
+                {approvedCertifications.map((cert) => (
                   <tr key={cert.id}>
                     <td className="id-cell">#{cert.id}</td>
                     <td>{cert.bank_name}</td>
@@ -179,11 +179,73 @@ export default function MyCertifications() {
                             month: '2-digit',
                             day: '2-digit'
                           })
-                        : '-'
+                        : '—'
+                      }
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Certificaciones Pendientes, Rechazadas o Más Datos */}
+      {otherCertifications.length > 0 && (
+        <div className="dashboard-section">
+          <div className="section-header">
+            <h2>Solicitudes en Proceso</h2>
+          </div>
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Banco</th>
+                  <th>Estado</th>
+                  <th>Fecha Solicitud</th>
+                  <th>Fecha Respuesta</th>
+                  <th>Observaciones</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {otherCertifications.map((cert) => (
+                  <tr key={cert.id}>
+                    <td className="id-cell">#{cert.id}</td>
+                    <td>{cert.bank_name}</td>
+                    <td>{getStatusBadge(cert.status)}</td>
+                    <td>
+                      {new Date(cert.created_at).toLocaleDateString('es-AR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                      })}
+                    </td>
+                    <td>
+                      {cert.reviewed_at 
+                        ? new Date(cert.reviewed_at).toLocaleDateString('es-AR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                          })
+                        : '—'
                       }
                     </td>
                     <td>
-                      {cert.rejection_reason || '-'}
+                      {cert.notes || '—'}
+                    </td>
+                    <td>
+                      {cert.status === 'mas_datos' && (
+                        <button 
+                          className="btn btn-sm btn-primary"
+                          onClick={() => handleEditCertification(cert)}
+                          title="Actualizar información"
+                        >
+                          <Edit size={16} />
+                          Actualizar
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

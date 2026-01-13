@@ -93,7 +93,7 @@ export default function BuyerDashboard() {
             <DollarSign size={24} />
           </div>
           <div className="stat-content">
-            <h3>Total Invertido</h3>
+            <h3>Total Comprado</h3>
             <p className="stat-value">${stats.totalSpent.toLocaleString('es-AR')}</p>
           </div>
         </div>
@@ -116,19 +116,19 @@ export default function BuyerDashboard() {
             <h3>Certificación Financiera</h3>
             {stats.certificationStatus === 'certified' && (
               <p>
-                ✓ Tienes {stats.certificationDetails?.count > 1 ? `${stats.certificationDetails.count} certificaciones activas` : 'certificación activa'} con {stats.certificationDetails?.bank}. 
+                Tienes {stats.certificationDetails?.count > 1 ? `${stats.certificationDetails.count} certificaciones activas` : 'certificación activa'} con {stats.certificationDetails?.bank}. 
                 Accede a mejores condiciones de compra.
               </p>
             )}
             {stats.certificationStatus === 'pending' && (
               <p>
-                ⏳ Tienes {stats.certificationDetails?.count > 1 ? `${stats.certificationDetails.count} solicitudes pendientes` : 'una solicitud pendiente'} de revisión con {stats.certificationDetails?.bank}.
+                Tienes {stats.certificationDetails?.count > 1 ? `${stats.certificationDetails.count} solicitudes pendientes` : 'una solicitud pendiente'} de revisión con {stats.certificationDetails?.bank}.
                 Te notificaremos cuando sea revisada.
               </p>
             )}
             {stats.certificationStatus === 'rejected' && (
               <p>
-                ✗ Tu última solicitud con {stats.certificationDetails?.bank} fue rechazada. 
+                Tu última solicitud con {stats.certificationDetails?.bank} fue rechazada. 
                 Puedes solicitar certificación con otro banco.
               </p>
             )}

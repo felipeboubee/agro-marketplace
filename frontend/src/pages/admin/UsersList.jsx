@@ -9,9 +9,23 @@ import {
   UserCheck, 
   UserX,
   MoreVertical,
-  Download
+  Download,
+  UserPlus,
+  X
 } from "lucide-react";
 import "../../styles/dashboard.css";
+
+const availableBanks = [
+  'Banco Galicia',
+  'Banco Nación',
+  'Banco Provincia',
+  'Banco Santander',
+  'Banco BBVA',
+  'Banco Patagonia',
+  'Banco Macro',
+  'Banco Comafi',
+  'Banco Credicoop'
+];
 
 export default function UsersList() {
   const [users, setUsers] = useState([]);
@@ -26,10 +40,37 @@ export default function UsersList() {
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: "",
+    email: "",
+    password: "",
+    user_type: "comprador",
+    bank_name: ""
+  });
+  const [existingBanks, setExistingBanks] = useState([]);
+  const [showOtherBank, setShowOtherBank] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userActivity, setUserActivity] = useState([]);
+  const [editUserData, setEditUserData] = useState({
+    name: "",
+    email: "",
+    user_type: "",
+    bank_name: "",
+    phone: "",
+    location: ""
+  });
 
   useEffect(() => {
     loadUsers();
   }, [filters]);
+
+  useEffect(() => {
+    loadExistingBanks();
+  }, []);
 
   async function loadUsers() {
     try {
@@ -42,6 +83,26 @@ export default function UsersList() {
       setUsers([]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadExistingBanks() {
+    try {
+      // Obtener usuarios tipo banco para incluir bancos adicionales que se hayan agregado
+      const data = await api.getUsers({ user_type: 'banco', limit: 100 });
+      const banksFromDB = [...new Set(data.users.map(u => u.bank_name).filter(Boolean))];
+      
+      // Combinar bancos predefinidos con los de la base de datos (eliminar duplicados)
+      const allBanks = [...new Set([...availableBanks, ...banksFromDB])];
+      
+      // Ordenar alfabéticamente
+      allBanks.sort();
+      
+      setExistingBanks(allBanks);
+    } catch (error) {
+      console.error("Error loading banks:", error);
+      // En caso de error, al menos usar los bancos predefinidos
+      setExistingBanks(availableBanks);
     }
   }
 
@@ -66,6 +127,8 @@ export default function UsersList() {
     try {
       await api.updateUser(userId, data);
       alert('Usuario actualizado correctamente');
+      setShowEditModal(false);
+      setSelectedUser(null);
       loadUsers();
     } catch (error) {
       console.error("Error updating user:", error);
@@ -75,14 +138,54 @@ export default function UsersList() {
 
   const loadUserActivity = async (userId) => {
     try {
-      const activity = await api.getUserActivity(userId);
-      const activities = Array.isArray(activity) ? activity : [activity];
-      alert(`${activities.length} registros de actividad encontrados`);
-      console.log('User activity:', activities);
+      setUserActivity([]);
+      setShowHistoryModal(true);
+      
+      const response = await api.get(`/admin/users/${userId}/activity`);
+      const activities = Array.isArray(response) ? response : (response.activities || []);
+      setUserActivity(activities);
     } catch (error) {
       console.error("Error loading user activity:", error);
       alert('Error al cargar historial');
+      setShowHistoryModal(false);
     }
+  };
+
+  const handleViewDetails = (user) => {
+    setSelectedUser(user);
+    setShowDetailsModal(true);
+    setOpenMenuId(null);
+  };
+
+  const handleEditUser = (user) => {
+    setSelectedUser(user);
+    setEditUserData({
+      name: user.name || "",
+      email: user.email || "",
+      user_type: user.user_type || "",
+      bank_name: user.bank_name || "",
+      phone: user.phone || "",
+      location: user.location || ""
+    });
+    setShowEditModal(true);
+    setOpenMenuId(null);
+  };
+
+  const handleViewHistory = (user) => {
+    setSelectedUser(user);
+    loadUserActivity(user.id);
+    setOpenMenuId(null);
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    
+    await updateUserInfo(selectedUser.id, editUserData);
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditUserData(prev => ({ ...prev, [field]: value }));
   };
 
   const deleteUser = async (userId) => {
@@ -93,6 +196,64 @@ export default function UsersList() {
     } catch (error) {
       console.error("Error deleting user:", error);
       alert('Error al eliminar usuario');
+    }
+  };
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    
+    // Validaciones
+    if (!newUser.name || !newUser.email || !newUser.password) {
+      alert('Por favor completa todos los campos obligatorios');
+      return;
+    }
+
+    if (newUser.user_type === 'banco' && !newUser.bank_name) {
+      alert('Por favor ingresa el nombre del banco');
+      return;
+    }
+
+    try {
+      const userData = {
+        name: newUser.name,
+        email: newUser.email,
+        password: newUser.password,
+        user_type: newUser.user_type,
+        bank_name: newUser.user_type === 'banco' ? newUser.bank_name : null
+      };
+
+      await api.post('/auth/signup', userData);
+      alert('Usuario creado correctamente');
+      setShowCreateModal(false);
+      setNewUser({
+        name: "",
+        email: "",
+        password: "",
+        user_type: "comprador",
+        bank_name: ""
+      });
+      loadUsers();
+    } catch (error) {
+      console.error("Error creating user:", error);
+      alert(error.response?.data?.error || 'Error al crear usuario');
+    }
+  };
+
+  const handleNewUserChange = (field, value) => {
+    setNewUser(prev => ({ ...prev, [field]: value }));
+    
+    // Si cambia el tipo de usuario, resetear bank_name
+    if (field === 'user_type' && value !== 'banco') {
+      setNewUser(prev => ({ ...prev, bank_name: '' }));
+      setShowOtherBank(false);
+    }
+    
+    // Si se selecciona "otro" en el banco
+    if (field === 'bank_name' && value === '__otro__') {
+      setShowOtherBank(true);
+      setNewUser(prev => ({ ...prev, bank_name: '' }));
+    } else if (field === 'bank_name' && value !== '__otro__') {
+      setShowOtherBank(false);
     }
   };
 
@@ -140,6 +301,10 @@ export default function UsersList() {
           Gestión de Usuarios
         </h1>
         <div className="header-actions">
+          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+            <UserPlus size={20} />
+            Crear Usuario
+          </button>
           <button className="btn btn-secondary">
             <Download size={20} />
             Exportar
@@ -238,7 +403,7 @@ export default function UsersList() {
                   <th>Usuario</th>
                   <th>Email</th>
                   <th>Tipo</th>
-                  <th>Pedidos</th>
+                  <th>Última Actividad</th>
                   <th>Estado</th>
                   <th>Registro</th>
                   <th>Acciones</th>
@@ -247,31 +412,18 @@ export default function UsersList() {
               <tbody>
                 {users.map(user => (
                   <tr key={user.id}>
-                    <td className="text-mono">{user.id}</td>
-                    <td>
-                      <div className="user-info">
-                        <div className="user-name">{user.name}</div>
-                        <div className="user-last-activity">
-                          Última actividad: {
-                            user.last_activity 
-                              ? format(new Date(user.last_activity), "dd/MM/yyyy", { locale: es })
-                              : "Nunca"
-                          }
-                        </div>
-                      </div>
-                    </td>
+                    <td>{user.id}</td>
+                    <td>{user.name}</td>
                     <td>{user.email}</td>
+                    <td>{user.user_type}</td>
                     <td>
-                      <span className={`user-type user-type-${user.user_type}`}>
-                        {user.user_type}
-                      </span>
+                      {user.last_activity 
+                        ? format(new Date(user.last_activity), "dd/MM/yyyy HH:mm", { locale: es })
+                        : "Nunca"
+                      }
                     </td>
-                    <td>{user.order_count || 0}</td>
                     <td>
-                      <div className="user-status">
-                        <span className={`status-indicator ${user.is_active ? 'active' : 'inactive'}`}></span>
-                        <span>{user.is_active ? "Activo" : "Inactivo"}</span>
-                      </div>
+                      {user.is_active ? "Activo" : "Inactivo"}
                     </td>
                     <td>
                       {format(new Date(user.created_at), "dd/MM/yyyy", { locale: es })}
@@ -295,21 +447,15 @@ export default function UsersList() {
                           </button>
                           {openMenuId === user.id && (
                             <div className="menu-dropdown">
-                              <button onClick={() => {
-                                setOpenMenuId(null);
-                                window.location.href = `/admin/users/${user.id}`;
-                              }}>Ver Detalles</button>
-                              <button onClick={() => {
-                                setOpenMenuId(null);
-                                const newName = prompt('Nuevo nombre:', user.name);
-                                if (newName) {
-                                  updateUserInfo(user.id, { name: newName });
-                                }
-                              }}>Editar</button>
-                              <button onClick={() => {
-                                setOpenMenuId(null);
-                                loadUserActivity(user.id);
-                              }}>Ver Historial</button>
+                              <button onClick={() => handleViewDetails(user)}>
+                                Ver Detalles
+                              </button>
+                              <button onClick={() => handleEditUser(user)}>
+                                Editar
+                              </button>
+                              <button onClick={() => handleViewHistory(user)}>
+                                Ver Historial
+                              </button>
                               <hr style={{margin: '4px 0'}} />
                               <button style={{color: '#ef4444'}} onClick={() => {
                                 if (window.confirm(`¿Eliminar usuario ${user.name}?`)) {
@@ -375,6 +521,404 @@ export default function UsersList() {
           </div>
         )}
       </div>
+
+      {/* Modal Crear Usuario */}
+      {showCreateModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                <UserPlus size={24} />
+                Crear Nuevo Usuario
+              </h2>
+              <button className="btn-close" onClick={() => setShowCreateModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="modal-body">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>
+                    Nombre Completo <span className="required">*</span>
+                  </label>
+                  <input 
+                    type="text"
+                    className="input-field"
+                    placeholder="Ej: Juan Pérez"
+                    value={newUser.name}
+                    onChange={(e) => handleNewUserChange('name', e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    Email <span className="required">*</span>
+                  </label>
+                  <input 
+                    type="email"
+                    className="input-field"
+                    placeholder="email@ejemplo.com"
+                    value={newUser.email}
+                    onChange={(e) => handleNewUserChange('email', e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    Contraseña <span className="required">*</span>
+                  </label>
+                  <input 
+                    type="password"
+                    className="input-field"
+                    placeholder="Mínimo 6 caracteres"
+                    value={newUser.password}
+                    onChange={(e) => handleNewUserChange('password', e.target.value)}
+                    minLength={6}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    Tipo de Usuario <span className="required">*</span>
+                  </label>
+                  <select 
+                    className="input-field"
+                    value={newUser.user_type}
+                    onChange={(e) => handleNewUserChange('user_type', e.target.value)}
+                    required
+                  >
+                    <option value="comprador">Comprador</option>
+                    <option value="vendedor">Vendedor</option>
+                    <option value="banco">Banco</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+
+                {newUser.user_type === 'banco' && (
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label>
+                      Nombre del Banco <span className="required">*</span>
+                    </label>
+                    {!showOtherBank ? (
+                      <select 
+                        className="input-field"
+                        value={newUser.bank_name}
+                        onChange={(e) => handleNewUserChange('bank_name', e.target.value)}
+                        required
+                      >
+                        <option value="">Seleccionar banco</option>
+                        {existingBanks.map(bank => (
+                          <option key={bank} value={bank}>{bank}</option>
+                        ))}
+                        <option value="__otro__">➕ Agregar otro banco</option>
+                      </select>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input 
+                          type="text"
+                          className="input-field"
+                          placeholder="Ej: Banco Nación"
+                          value={newUser.bank_name}
+                          onChange={(e) => handleNewUserChange('bank_name', e.target.value)}
+                          required
+                          style={{ flex: 1 }}
+                        />
+                        <button 
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            setShowOtherBank(false);
+                            setNewUser(prev => ({ ...prev, bank_name: '' }));
+                          }}
+                          style={{ minWidth: 'auto', padding: '8px 16px' }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setShowCreateModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  <UserPlus size={20} />
+                  Crear Usuario
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ver Detalles */}
+      {showDetailsModal && selectedUser && (
+        <div className="modal-overlay" onClick={() => setShowDetailsModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                <Users size={24} />
+                Detalles del Usuario
+              </h2>
+              <button className="btn-close" onClick={() => setShowDetailsModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="user-details-grid">
+                <div className="detail-item">
+                  <label>ID</label>
+                  <p>{selectedUser.id}</p>
+                </div>
+                <div className="detail-item">
+                  <label>Nombre Completo</label>
+                  <p>{selectedUser.name}</p>
+                </div>
+                <div className="detail-item">
+                  <label>Email</label>
+                  <p>{selectedUser.email}</p>
+                </div>
+                <div className="detail-item">
+                  <label>Tipo de Usuario</label>
+                  <p>{selectedUser.user_type}</p>
+                </div>
+                {selectedUser.bank_name && (
+                  <div className="detail-item">
+                    <label>Banco</label>
+                    <p>{selectedUser.bank_name}</p>
+                  </div>
+                )}
+                {selectedUser.phone && (
+                  <div className="detail-item">
+                    <label>Teléfono</label>
+                    <p>{selectedUser.phone}</p>
+                  </div>
+                )}
+                {selectedUser.location && (
+                  <div className="detail-item">
+                    <label>Ubicación</label>
+                    <p>{selectedUser.location}</p>
+                  </div>
+                )}
+                <div className="detail-item">
+                  <label>Estado</label>
+                  <p>
+                    <span className={`status-badge ${selectedUser.is_active ? 'status-completed' : 'status-cancelled'}`}>
+                      {selectedUser.is_active ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </p>
+                </div>
+                <div className="detail-item">
+                  <label>Total de Pedidos</label>
+                  <p>{selectedUser.order_count || 0}</p>
+                </div>
+                <div className="detail-item">
+                  <label>Fecha de Registro</label>
+                  <p>{format(new Date(selectedUser.created_at), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+                </div>
+                {selectedUser.last_activity && (
+                  <div className="detail-item">
+                    <label>Última Actividad</label>
+                    <p>{format(new Date(selectedUser.last_activity), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowDetailsModal(false)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Usuario */}
+      {showEditModal && selectedUser && (
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                <Users size={24} />
+                Editar Usuario
+              </h2>
+              <button className="btn-close" onClick={() => setShowEditModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="modal-body">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Nombre Completo</label>
+                  <input 
+                    type="text"
+                    className="input-field"
+                    value={editUserData.name}
+                    onChange={(e) => handleEditChange('name', e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Email</label>
+                  <input 
+                    type="email"
+                    className="input-field"
+                    value={editUserData.email}
+                    onChange={(e) => handleEditChange('email', e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Tipo de Usuario</label>
+                  <select 
+                    className="input-field"
+                    value={editUserData.user_type}
+                    onChange={(e) => handleEditChange('user_type', e.target.value)}
+                    required
+                  >
+                    <option value="comprador">Comprador</option>
+                    <option value="vendedor">Vendedor</option>
+                    <option value="banco">Banco</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+
+                {editUserData.user_type === 'banco' && (
+                  <div className="form-group">
+                    <label>Nombre del Banco</label>
+                    <select 
+                      className="input-field"
+                      value={editUserData.bank_name}
+                      onChange={(e) => handleEditChange('bank_name', e.target.value)}
+                      required
+                    >
+                      <option value="">Seleccionar banco</option>
+                      {existingBanks.map(bank => (
+                        <option key={bank} value={bank}>{bank}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label>Teléfono</label>
+                  <input 
+                    type="tel"
+                    className="input-field"
+                    value={editUserData.phone}
+                    onChange={(e) => handleEditChange('phone', e.target.value)}
+                    placeholder="Opcional"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Ubicación</label>
+                  <input 
+                    type="text"
+                    className="input-field"
+                    value={editUserData.location}
+                    onChange={(e) => handleEditChange('location', e.target.value)}
+                    placeholder="Opcional"
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setShowEditModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  <UserCheck size={20} />
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ver Historial */}
+      {showHistoryModal && selectedUser && (
+        <div className="modal-overlay" onClick={() => setShowHistoryModal(false)}>
+          <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                <Users size={24} />
+                Historial de Actividad - {selectedUser.name}
+              </h2>
+              <button className="btn-close" onClick={() => setShowHistoryModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {userActivity.length === 0 ? (
+                <div className="empty-state">
+                  <Users size={48} />
+                  <p>No se encontró actividad para este usuario</p>
+                </div>
+              ) : (
+                <div className="activity-table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Tipo</th>
+                        <th>Descripción</th>
+                        <th>Fecha</th>
+                        <th>Hora</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {userActivity.map((activity, index) => (
+                        <tr key={index}>
+                          <td>
+                            <span className="activity-type-text">
+                              {activity.activity_type?.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td>{activity.description || '—'}</td>
+                          <td>
+                            {format(new Date(activity.created_at), "dd/MM/yyyy", { locale: es })}
+                          </td>
+                          <td>
+                            {format(new Date(activity.created_at), "HH:mm:ss", { locale: es })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowHistoryModal(false)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

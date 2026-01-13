@@ -5,12 +5,17 @@ const User = require('../models/User');
 const authController = {
   async register(req, res) {
     try {
-      const { email, password, name, user_type, phone, location } = req.body;
+      const { email, password, name, user_type, phone, location, bank_name } = req.body;
 
       // Verificar si el usuario ya existe
       const existingUser = await User.findByEmail(email);
       if (existingUser) {
         return res.status(400).json({ error: 'El usuario ya existe' });
+      }
+
+      // Validar que si es banco, tenga bank_name
+      if (user_type === 'banco' && !bank_name) {
+        return res.status(400).json({ error: 'El nombre del banco es requerido para usuarios tipo banco' });
       }
 
       // Hash de la contraseña
@@ -23,7 +28,8 @@ const authController = {
         name,
         user_type,
         phone,
-        location
+        location,
+        bank_name: user_type === 'banco' ? bank_name : null
       });
 
       // Generar token
@@ -39,7 +45,8 @@ const authController = {
           id: user.id,
           email: user.email,
           name: user.name,
-          user_type: user.user_type
+          user_type: user.user_type,
+          bank_name: user.bank_name
         },
         token
       });
@@ -79,6 +86,7 @@ const authController = {
           email: user.email,
           name: user.name,
           user_type: user.user_type,
+          bank_name: user.bank_name,
           location: user.location
         },
         token

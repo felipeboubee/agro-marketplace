@@ -137,6 +137,10 @@ class ApiService {
     return this.post('/certifications/apply', data);
   }
 
+  updateCertification(id, data) {
+    return this.put(`/certifications/${id}`, data);
+  }
+
   getMyCertifications() {
     return this.get('/certifications/my');
   }

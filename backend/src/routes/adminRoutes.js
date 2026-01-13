@@ -21,5 +21,6 @@ router.get('/dashboard/activity', auth, requireAdmin, adminController.getActivit
 router.get('/stats/detailed', auth, requireAdmin, adminController.getDetailedStats);
 router.get('/activity/detailed', auth, requireAdmin, adminController.getDetailedActivity);
 router.get('/users', auth, requireAdmin, adminController.getUsers);
+router.get('/users/:userId/activity', auth, requireAdmin, adminController.getUserActivity);
 
 module.exports = router;

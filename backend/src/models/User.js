@@ -2,13 +2,13 @@ const pool = require('../config/database');
 
 const User = {
   async create(userData) {
-    const { email, password, name, user_type, phone, location } = userData;
+    const { email, password, name, user_type, phone, location, bank_name } = userData;
     const query = `
-      INSERT INTO users (email, password, name, user_type, phone, location, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, NOW())
-      RETURNING id, email, name, user_type, created_at
+      INSERT INTO users (email, password, name, user_type, phone, location, bank_name, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      RETURNING id, email, name, user_type, bank_name, created_at
     `;
-    const values = [email, password, name, user_type, phone, location];
+    const values = [email, password, name, user_type, phone, location, bank_name];
     const { rows } = await pool.query(query, values);
     return rows[0];
   },
@@ -36,13 +36,13 @@ const User = {
   },
 
   async getAll() {
-    const query = 'SELECT id, email, name, user_type, created_at FROM users ORDER BY created_at DESC';
+    const query = 'SELECT id, email, name, user_type, bank_name, created_at FROM users ORDER BY created_at DESC';
     const { rows } = await pool.query(query);
     return rows;
   },
 
   async getByType(user_type) {
-    const query = 'SELECT id, email, name, user_type, created_at FROM users WHERE user_type = $1';
+    const query = 'SELECT id, email, name, user_type, bank_name, created_at FROM users WHERE user_type = $1';
     const { rows } = await pool.query(query, [user_type]);
     return rows;
   }

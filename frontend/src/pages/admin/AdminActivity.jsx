@@ -13,7 +13,12 @@ import {
   ShoppingCart,
   CreditCard,
   Edit,
-  AlertCircle
+  AlertCircle,
+  FileCheck,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Package
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -33,6 +38,7 @@ export default function AdminActivity() {
   const [activityTypes, setActivityTypes] = useState([]);
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
   const debounceTimerRef = useRef(null);
 
   // Función para cargar actividades - sin dependencias de filters
@@ -104,6 +110,53 @@ export default function AdminActivity() {
     setUserIdInput("");
   };
 
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortedActivities = () => {
+    const sorted = [...activities].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+
+      // Manejo especial para display_id (extraer número)
+      if (sortConfig.key === 'display_id') {
+        aValue = parseInt(aValue?.replace(/[A-Z]+/g, '') || 0);
+        bValue = parseInt(bValue?.replace(/[A-Z]+/g, '') || 0);
+      }
+
+      // Manejo especial para fechas
+      if (sortConfig.key === 'created_at') {
+        aValue = new Date(aValue);
+        bValue = new Date(bValue);
+      }
+
+      // Manejo de valores null/undefined
+      if (aValue == null) return 1;
+      if (bValue == null) return -1;
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+    return sorted;
+  };
+
+  const getSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) {
+      return '⇅';
+    }
+    return sortConfig.direction === 'asc' ? '↑' : '↓';
+  };
+
   const getActivityIcon = (type) => {
     switch(type?.toLowerCase()) {
       case 'user_registration':
@@ -118,6 +171,16 @@ export default function AdminActivity() {
         return <Edit size={18} className="activity-icon-svg" />;
       case 'error':
         return <AlertCircle size={18} className="activity-icon-svg" />;
+      case 'certification_request':
+        return <FileCheck size={18} className="activity-icon-svg" />;
+      case 'certification_aprobado':
+        return <CheckCircle size={18} className="activity-icon-svg" />;
+      case 'certification_rechazado':
+        return <XCircle size={18} className="activity-icon-svg" />;
+      case 'certification_mas_datos':
+        return <Clock size={18} className="activity-icon-svg" />;
+      case 'lote_publicado':
+        return <Package size={18} className="activity-icon-svg" />;
       default:
         return <Activity size={18} className="activity-icon-svg" />;
     }
@@ -135,6 +198,16 @@ export default function AdminActivity() {
         return 'Pago';
       case 'profile_update':
         return 'Actualización de Perfil';
+      case 'certification_request':
+        return 'Solicitud de Certificación';
+      case 'certification_aprobado':
+        return 'Certificación Aprobada';
+      case 'certification_rechazado':
+        return 'Certificación Rechazada';
+      case 'certification_mas_datos':
+        return 'Más Datos Solicitados';
+      case 'lote_publicado':
+        return 'Lote Publicado';
       default:
         return type || 'Actividad';
     }
@@ -295,55 +368,54 @@ export default function AdminActivity() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>Tipo</th>
-                    <th>Usuario</th>
+                    <th onClick={() => handleSort('display_id')} style={{ cursor: 'pointer' }}>
+                      ID {getSortIcon('display_id')}
+                    </th>
+                    <th onClick={() => handleSort('activity_type')} style={{ cursor: 'pointer' }}>
+                      Tipo {getSortIcon('activity_type')}
+                    </th>
+                    <th onClick={() => handleSort('user_name')} style={{ cursor: 'pointer' }}>
+                      Usuario {getSortIcon('user_name')}
+                    </th>
+                    <th onClick={() => handleSort('user_email')} style={{ cursor: 'pointer' }}>
+                      Email {getSortIcon('user_email')}
+                    </th>
                     <th>Descripción</th>
-                    <th>Dirección IP</th>
-                    <th>Fecha y Hora</th>
+                    <th onClick={() => handleSort('created_at')} style={{ cursor: 'pointer' }}>
+                      Fecha {getSortIcon('created_at')}
+                    </th>
+                    <th>Hora</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {activities.map((activity) => (
-                    <tr key={activity.id} className={`activity-row activity-${activity.activity_type}`}>
+                  {getSortedActivities().map((activity, index) => (
+                    <tr key={`${activity.activity_type}-${activity.display_id || activity.id}-${index}`} className={`activity-row activity-${activity.activity_type}`}>
                       <td className="text-mono">
-                        <span className="id-badge">{activity.id}</span>
+                        <span className="id-badge">{activity.display_id || activity.id}</span>
                       </td>
                       <td>
-                        <div className="activity-type-badge">
-                          <span className="activity-icon">
-                            {getActivityIcon(activity.activity_type)}
-                          </span>
-                          <span className="activity-type-text">
-                            {getActivityLabel(activity.activity_type)}
-                          </span>
-                        </div>
+                        <span className="activity-type-text">
+                          {getActivityLabel(activity.activity_type)}
+                        </span>
                       </td>
                       <td>
-                        {activity.user_name ? (
-                          <div className="user-info">
-                            <div className="user-name">{activity.user_name}</div>
-                            <div className="user-email">{activity.user_email}</div>
-                          </div>
-                        ) : (
-                          <span className="text-muted">—</span>
-                        )}
+                        <span className="user-name">{activity.user_name || '—'}</span>
+                      </td>
+                      <td>
+                        <span className="user-email">{activity.user_email || '—'}</span>
                       </td>
                       <td className="activity-description">
                         {activity.description || "Usuario registrado en el sistema"}
                       </td>
                       <td>
-                        <code className="ip-address">{activity.ip_address || "N/A"}</code>
+                        <span className="timestamp-date">
+                          {format(new Date(activity.created_at), "dd/MM/yyyy", { locale: es })}
+                        </span>
                       </td>
                       <td>
-                        <div className="timestamp">
-                          <div className="timestamp-date">
-                            {format(new Date(activity.created_at), "dd/MM/yyyy", { locale: es })}
-                          </div>
-                          <div className="timestamp-time">
-                            {format(new Date(activity.created_at), "HH:mm:ss", { locale: es })}
-                          </div>
-                        </div>
+                        <span className="timestamp-time">
+                          {format(new Date(activity.created_at), "HH:mm:ss", { locale: es })}
+                        </span>
                       </td>
                     </tr>
                   ))}

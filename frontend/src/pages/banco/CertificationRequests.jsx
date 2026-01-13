@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { FileCheck, Filter, RefreshCw, Eye, User, Clock, CheckCircle, XCircle, Calendar, DollarSign, Upload } from 'lucide-react';
+import { FileCheck, FileText, Filter, RefreshCw, Eye, User, Clock, CheckCircle, XCircle, Calendar, DollarSign, Upload } from 'lucide-react';
 import '../../styles/dashboard.css';
 
 const CertificationRequests = () => {
@@ -11,6 +11,9 @@ const CertificationRequests = () => {
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [showMoreDataForm, setShowMoreDataForm] = useState(false);
+  const [notes, setNotes] = useState('');
   const [filters, setFilters] = useState({
     status: 'all',
     search: '',
@@ -117,20 +120,23 @@ const CertificationRequests = () => {
     });
   };
 
-  const handleStatusUpdate = async (requestId, status, notes = '') => {
+  const handleStatusUpdate = async (requestId, status, notesText = '') => {
     setActionLoading(true);
     
     try {
-      await api.updateCertificationStatus(requestId, status, notes);
+      await api.updateCertificationStatus(requestId, status, notesText);
 
       // Actualizar lista localmente
       setRequests(requests.map(req => 
-        req.id === requestId ? { ...req, status, notes } : req
+        req.id === requestId ? { ...req, status, notes: notesText } : req
       ));
 
       // Cerrar modal si está abierto
       if (selectedRequest?.id === requestId) {
         setSelectedRequest(null);
+        setShowRejectForm(false);
+        setShowMoreDataForm(false);
+        setNotes('');
       }
 
       alert(`Solicitud actualizada exitosamente`);
@@ -141,6 +147,38 @@ const CertificationRequests = () => {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleApprove = (requestId) => {
+    if (window.confirm('¿Está seguro de aprobar esta certificación?')) {
+      handleStatusUpdate(requestId, 'aprobado');
+    }
+  };
+
+  const handleReject = (requestId) => {
+    if (showRejectForm) {
+      if (!notes.trim()) {
+        alert('Por favor, ingrese el motivo del rechazo');
+        return;
+      }
+      handleStatusUpdate(requestId, 'rechazado', notes);
+    } else {
+      setShowRejectForm(true);
+    }
+  };
+
+  const handleRequestMoreData = (requestId) => {
+    if (showMoreDataForm) {
+      handleStatusUpdate(requestId, 'mas_datos', notes);
+    } else {
+      setShowMoreDataForm(true);
+    }
+  };
+
+  const handleCancelForm = () => {
+    setShowRejectForm(false);
+    setShowMoreDataForm(false);
+    setNotes('');
   };
 
   const getStatusBadge = (status) => {
@@ -490,30 +528,119 @@ const CertificationRequests = () => {
               )}
 
               {selectedRequest.status === 'pendiente_aprobacion' && (
+                <>
+                  {/* Formulario para Rechazar */}
+                  {showRejectForm && (
+                    <div className="detail-section">
+                      <h3>Motivo del Rechazo</h3>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Ingrese el motivo del rechazo..."
+                        rows="4"
+                        className="form-textarea"
+                        style={{ width: '100%', marginBottom: '12px' }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Formulario para Solicitar Más Datos */}
+                  {showMoreDataForm && (
+                    <div className="detail-section">
+                      <h3>Datos Adicionales Requeridos</h3>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Especifique qué datos adicionales necesita..."
+                        rows="4"
+                        className="form-textarea"
+                        style={{ width: '100%', marginBottom: '12px' }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="modal-actions">
+                    {showRejectForm || showMoreDataForm ? (
+                      <>
+                        <button 
+                          onClick={() => showRejectForm ? handleReject(selectedRequest.id) : handleRequestMoreData(selectedRequest.id)}
+                          className={showRejectForm ? "btn btn-danger" : "btn btn-secondary"}
+                          disabled={actionLoading}
+                        >
+                          {showRejectForm ? (
+                            <>
+                              <XCircle size={16} />
+                              Confirmar Rechazo
+                            </>
+                          ) : (
+                            <>
+                              <FileText size={16} />
+                              Confirmar Solicitud
+                            </>
+                          )}
+                        </button>
+                        <button 
+                          onClick={handleCancelForm}
+                          className="btn btn-outline"
+                          disabled={actionLoading}
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button 
+                          onClick={() => handleApprove(selectedRequest.id)}
+                          className="btn btn-success"
+                          disabled={actionLoading}
+                        >
+                          <CheckCircle size={16} />
+                          Aprobar
+                        </button>
+                        <button 
+                          onClick={() => handleReject(selectedRequest.id)}
+                          className="btn btn-danger"
+                          disabled={actionLoading}
+                        >
+                          <XCircle size={16} />
+                          Rechazar
+                        </button>
+                        <button 
+                          onClick={() => handleRequestMoreData(selectedRequest.id)}
+                          className="btn btn-secondary"
+                          disabled={actionLoading}
+                        >
+                          <FileText size={16} />
+                          Solicitar Más Datos
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {selectedRequest.status === 'aprobado' && (
                 <div className="modal-actions">
                   <button 
-                    onClick={() => handleStatusUpdate(selectedRequest.id, 'aprobado')}
-                    className="btn btn-success"
+                    onClick={() => handleStatusUpdate(selectedRequest.id, 'pendiente_aprobacion')}
+                    className="btn btn-warning"
                     disabled={actionLoading}
                   >
-                    <CheckCircle size={16} />
-                    Aprobar
+                    <Clock size={16} />
+                    Revertir Aprobación
                   </button>
+                </div>
+              )}
+
+              {selectedRequest.status === 'rechazado' && (
+                <div className="modal-actions">
                   <button 
-                    onClick={() => handleStatusUpdate(selectedRequest.id, 'rechazado')}
-                    className="btn btn-danger"
+                    onClick={() => handleStatusUpdate(selectedRequest.id, 'pendiente_aprobacion')}
+                    className="btn btn-warning"
                     disabled={actionLoading}
                   >
-                    <XCircle size={16} />
-                    Rechazar
-                  </button>
-                  <button 
-                    onClick={() => handleStatusUpdate(selectedRequest.id, 'mas_datos')}
-                    className="btn btn-secondary"
-                    disabled={actionLoading}
-                  >
-                    <FileCheck size={16} />
-                    Solicitar Más Datos
+                    <Clock size={16} />
+                    Revertir Rechazo
                   </button>
                 </div>
               )}

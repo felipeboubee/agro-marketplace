@@ -239,79 +239,270 @@ exports.getDetailedActivity = async (req, res) => {
   try {
     const { 
       page = 1, 
-      limit = 50
+      limit = 50,
+      activity_type = '',
+      user_id = '',
+      start_date = '',
+      end_date = ''
     } = req.query;
     
     const offset = (page - 1) * limit;
     
-    let activities = [];
-    let total = 0;
-    let activityTypes = [];
-    let hasUserActivity = false;
-
-    try {
-      // Verificar si la tabla user_activity existe y tiene datos
-      const countResult = await pool.query('SELECT COUNT(*) as total FROM user_activity');
-      total = parseInt(countResult.rows[0]?.total || 0);
-      
-      if (total > 0) {
-        hasUserActivity = true;
-        
-        // Obtener datos
-        const result = await pool.query(`
-          SELECT 
-            ua.*,
-            u.name as user_name,
-            u.email as user_email
-          FROM user_activity ua
-          LEFT JOIN users u ON u.id = ua.user_id
-          ORDER BY ua.created_at DESC
-          LIMIT $1 OFFSET $2
-        `, [limit, offset]);
-        
-        activities = result.rows;
-
-        // Obtener tipos de actividad
-        const typesResult = await pool.query(`
-          SELECT DISTINCT activity_type 
-          FROM user_activity 
-          ORDER BY activity_type
-        `);
-        activityTypes = typesResult.rows.map(row => row.activity_type);
+    // Construir array de condiciones WHERE
+    let whereConditions = [];
+    let params = [];
+    let paramIndex = 1;
+    
+    if (user_id) {
+      whereConditions.push(`user_id = $${paramIndex}`);
+      params.push(user_id);
+      paramIndex++;
+    }
+    
+    if (start_date) {
+      whereConditions.push(`created_at >= $${paramIndex}`);
+      params.push(start_date);
+      paramIndex++;
+    }
+    
+    if (end_date) {
+      whereConditions.push(`created_at <= $${paramIndex}`);
+      params.push(end_date);
+      paramIndex++;
+    }
+    
+    const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : '';
+    
+    // Query para registro de usuarios
+    const userQuery = `
+      SELECT 
+        u.id,
+        u.id as user_id,
+        u.name as user_name,
+        u.email as user_email,
+        u.created_at,
+        NULL as status,
+        u.user_type as bank_name,
+        'user_registration' as activity_type,
+        'Usuario registrado: ' || u.user_type as description
+      FROM users u
+      ${whereClause}
+    `;
+    
+    // Query base para certificaciones (solicitud inicial)
+    const certQuery = `
+      SELECT 
+        c.id,
+        c.user_id,
+        u.name as user_name,
+        u.email as user_email,
+        c.created_at,
+        c.status,
+        c.bank_name,
+        'certification_request' as activity_type,
+        'Solicitud de certificación financiera enviada a ' || c.bank_name as description
+      FROM certifications c
+      LEFT JOIN users u ON u.id = c.user_id
+      ${whereClause}
+    `;
+    
+    // Query para actualizaciones de estado de certificaciones
+    let statusWhereConditions = [];
+    let statusParamIndex = 1;
+    
+    if (user_id) {
+      statusWhereConditions.push(`c.user_id = $${statusParamIndex}`);
+      statusParamIndex++;
+    }
+    
+    if (start_date) {
+      statusWhereConditions.push(`c.reviewed_at >= $${statusParamIndex}`);
+      statusParamIndex++;
+    }
+    
+    if (end_date) {
+      statusWhereConditions.push(`c.reviewed_at <= $${statusParamIndex}`);
+      statusParamIndex++;
+    }
+    
+    statusWhereConditions.push('c.reviewed_at IS NOT NULL');
+    const statusWhereClause = 'WHERE ' + statusWhereConditions.join(' AND ');
+    
+    const certStatusQuery = `
+      SELECT 
+        c.id,
+        c.user_id,
+        u.name as user_name,
+        u.email as user_email,
+        c.reviewed_at as created_at,
+        c.status,
+        c.bank_name,
+        'certification_' || c.status as activity_type,
+        CASE 
+          WHEN c.status = 'aprobado' THEN 'Certificación aprobada por ' || c.bank_name
+          WHEN c.status = 'rechazado' THEN 'Certificación rechazada por ' || c.bank_name
+          WHEN c.status = 'mas_datos' THEN 'Banco ' || c.bank_name || ' solicitó más datos'
+          ELSE 'Certificación actualizada'
+        END as description
+      FROM certifications c
+      LEFT JOIN users u ON u.id = c.user_id
+      ${statusWhereClause}
+    `;
+    
+    // Query para lotes publicados
+    let lotesWhereConditions = [];
+    let lotesParamIndex = 1;
+    
+    if (user_id) {
+      lotesWhereConditions.push(`l.seller_id = $${lotesParamIndex}`);
+      lotesParamIndex++;
+    }
+    
+    if (start_date) {
+      lotesWhereConditions.push(`l.created_at >= $${lotesParamIndex}`);
+      lotesParamIndex++;
+    }
+    
+    if (end_date) {
+      lotesWhereConditions.push(`l.created_at <= $${lotesParamIndex}`);
+      lotesParamIndex++;
+    }
+    
+    const lotesWhereClause = lotesWhereConditions.length > 0 ? 'WHERE ' + lotesWhereConditions.join(' AND ') : '';
+    
+    const lotesQuery = `
+      SELECT 
+        l.id,
+        l.seller_id as user_id,
+        u.name as user_name,
+        u.email as user_email,
+        l.created_at,
+        l.status,
+        '' as bank_name,
+        'lote_publicado' as activity_type,
+        'Lote publicado: ' || l.animal_type || ' - ' || l.total_count || ' cabezas' as description
+      FROM lotes l
+      LEFT JOIN users u ON u.id = l.seller_id
+      ${lotesWhereClause}
+    `;
+    
+    // Construir la consulta UNION según el filtro de tipo
+    let unionParts = [];
+    
+    if (!activity_type || activity_type === 'user_registration') {
+      unionParts.push(userQuery);
+    }
+    
+    if (!activity_type || activity_type === 'certification_request') {
+      unionParts.push(certQuery);
+    }
+    
+    if (!activity_type || ['certification_aprobado', 'certification_rechazado', 'certification_mas_datos'].includes(activity_type)) {
+      if (activity_type && activity_type.startsWith('certification_') && activity_type !== 'certification_request') {
+        // Filtrar por estado específico
+        const status = activity_type.replace('certification_', '');
+        const specificStatusQuery = certStatusQuery.replace(
+          statusWhereClause,
+          statusWhereClause + ` AND c.status = '${status}'`
+        );
+        unionParts.push(specificStatusQuery);
+      } else if (!activity_type) {
+        unionParts.push(certStatusQuery);
       }
-    } catch (error) {
-      console.log('Error consultando user_activity, ignorando:', error.message);
     }
-
-    // Si no hay actividades en user_activity, usar usuarios como actividad
-    if (!hasUserActivity || activities.length === 0) {
-      console.log('Usando datos de usuarios como actividad...');
-      
-      // Contar total de usuarios
-      const userCountResult = await pool.query('SELECT COUNT(*) as total FROM users');
-      total = parseInt(userCountResult.rows[0]?.total || 0);
-      
-      // Obtener usuarios
-      const usersResult = await pool.query(`
-        SELECT 
-          id,
-          name as user_name,
-          email as user_email,
-          created_at,
-          'user_registration' as activity_type,
-          'Usuario registrado en el sistema' as description,
-          NULL as ip_address,
-          id as user_id
-        FROM users
-        ORDER BY created_at DESC
-        LIMIT $1 OFFSET $2
-      `, [limit, offset]);
-      
-      activities = usersResult.rows;
-      activityTypes = ['user_registration'];
-      
-      console.log(`Actividades cargadas: ${activities.length} registros, Total: ${total}`);
+    
+    if (!activity_type || activity_type === 'lote_publicado') {
+      unionParts.push(lotesQuery);
     }
+    
+    if (unionParts.length === 0) {
+      // No hay queries que coincidan con el filtro
+      return res.json({
+        activities: [],
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: 0,
+          totalPages: 0
+        },
+        filters: {
+          activityTypes: [
+            'user_registration',
+            'certification_request',
+            'certification_aprobado',
+            'certification_rechazado',
+            'certification_mas_datos',
+            'lote_publicado'
+          ]
+        }
+      });
+    }
+    
+    const unionQuery = unionParts.join(' UNION ALL ');
+    
+    // Obtener el total sin paginación
+    const countQuery = `SELECT COUNT(*) as total FROM (${unionQuery}) as combined`;
+    const countResult = await pool.query(countQuery, params);
+    const total = parseInt(countResult.rows[0]?.total || 0);
+    
+    // Obtener actividades con paginación y agregar número de fila por tipo
+    params.push(limit);
+    params.push(offset);
+    
+    const finalQuery = `
+      WITH ordered_activities AS (
+        SELECT *,
+          ROW_NUMBER() OVER (PARTITION BY activity_type ORDER BY created_at ASC) as type_sequence
+        FROM (${unionQuery}) as combined
+      )
+      SELECT *
+      FROM ordered_activities
+      ORDER BY created_at DESC NULLS LAST
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+    
+    const result = await pool.query(finalQuery, params);
+    
+    // Generar IDs únicos por tipo
+    const activities = result.rows.map(activity => {
+      let prefix = 'A'; // Default
+      
+      switch(activity.activity_type) {
+        case 'user_registration':
+          prefix = 'U';
+          break;
+        case 'certification_request':
+          prefix = 'CR';
+          break;
+        case 'certification_aprobado':
+          prefix = 'CA';
+          break;
+        case 'certification_rechazado':
+          prefix = 'CX';
+          break;
+        case 'certification_mas_datos':
+          prefix = 'CD';
+          break;
+        case 'lote_publicado':
+          prefix = 'L';
+          break;
+      }
+      
+      return {
+        ...activity,
+        display_id: `${prefix}${activity.type_sequence}`
+      };
+    });
+    
+    // Obtener tipos de actividad disponibles
+    const activityTypes = [
+      'user_registration',
+      'certification_request',
+      'certification_aprobado',
+      'certification_rechazado',
+      'certification_mas_datos',
+      'lote_publicado'
+    ];
 
     res.json({
       activities,
@@ -346,8 +537,26 @@ exports.getUsers = async (req, res) => {
     
     let query = `
       SELECT 
-        id, name, email, user_type, is_active, created_at
-      FROM users
+        u.id, 
+        u.name, 
+        u.email, 
+        u.user_type,
+        u.bank_name,
+        u.is_active, 
+        u.created_at,
+        (
+          SELECT MAX(activity_date)
+          FROM (
+            SELECT MAX(created_at) as activity_date FROM certifications WHERE user_id = u.id
+            UNION ALL
+            SELECT MAX(reviewed_at) as activity_date FROM certifications WHERE user_id = u.id AND reviewed_at IS NOT NULL
+            UNION ALL
+            SELECT MAX(updated_at) as activity_date FROM certifications WHERE user_id = u.id AND updated_at IS NOT NULL
+            UNION ALL
+            SELECT MAX(created_at) as activity_date FROM lotes WHERE seller_id = u.id
+          ) activities
+        ) as last_activity
+      FROM users u
       WHERE 1=1
     `;
     
@@ -355,33 +564,33 @@ exports.getUsers = async (req, res) => {
     let paramCount = 1;
 
     if (search) {
-      query += ` AND (name ILIKE $${paramCount} OR email ILIKE $${paramCount})`;
+      query += ` AND (u.name ILIKE $${paramCount} OR u.email ILIKE $${paramCount})`;
       params.push(`%${search}%`);
       paramCount++;
     }
 
     if (user_type) {
-      query += ` AND user_type = $${paramCount}`;
+      query += ` AND u.user_type = $${paramCount}`;
       params.push(user_type);
       paramCount++;
     }
 
     if (is_active !== '') {
-      query += ` AND is_active = $${paramCount}`;
+      query += ` AND u.is_active = $${paramCount}`;
       params.push(is_active === 'true');
       paramCount++;
     }
 
-    // Contar total
+    // Contar total (sin GROUP BY porque ya no usamos JOIN)
     const countQuery = `SELECT COUNT(*) as total FROM (${query}) as subquery`;
     const countResult = await pool.query(countQuery, params);
     const total = parseInt(countResult.rows[0]?.total || 0);
 
     // Obtener datos con paginación
-    query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    query += ` ORDER BY u.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
     params.push(limit, offset);
 
-    const users = await pool.query(query, params);
+    const usersResult = await pool.query(query, params);
 
     // Estadísticas adicionales
     const statsQuery = await pool.query(`
@@ -397,7 +606,7 @@ exports.getUsers = async (req, res) => {
     `);
 
     res.json({
-      users: users.rows,
+      users: usersResult.rows,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -409,5 +618,133 @@ exports.getUsers = async (req, res) => {
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Error al obtener usuarios', details: error.message });
+  }
+};
+
+// Obtener actividad de un usuario específico
+exports.getUserActivity = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID es requerido' });
+    }
+
+    // Consultas para obtener toda la actividad del usuario
+    const userQuery = `
+      SELECT 
+        id,
+        created_at,
+        'user_registration' as activity_type,
+        'Usuario registrado' as description
+      FROM users
+      WHERE id = $1
+    `;
+
+    const certQuery = `
+      SELECT 
+        id,
+        created_at,
+        'certification_request' as activity_type,
+        'Solicitud de certificación enviada a ' || bank_name as description
+      FROM certifications
+      WHERE user_id = $1 AND status = 'pendiente_aprobacion'
+      
+      UNION ALL
+      
+      SELECT 
+        id,
+        reviewed_at as created_at,
+        'certification_approved' as activity_type,
+        'Certificación aprobada por ' || bank_name as description
+      FROM certifications
+      WHERE user_id = $1 AND status = 'aprobado' AND reviewed_at IS NOT NULL
+      
+      UNION ALL
+      
+      SELECT 
+        id,
+        reviewed_at as created_at,
+        'certification_rejected' as activity_type,
+        'Certificación rechazada por ' || bank_name as description
+      FROM certifications
+      WHERE user_id = $1 AND status = 'rechazado' AND reviewed_at IS NOT NULL
+      
+      UNION ALL
+      
+      SELECT 
+        id,
+        reviewed_at as created_at,
+        'certification_more_data' as activity_type,
+        'Banco ' || bank_name || ' solicitó más datos' as description
+      FROM certifications
+      WHERE user_id = $1 AND status = 'mas_datos' AND reviewed_at IS NOT NULL
+    `;
+
+    const lotesQuery = `
+      SELECT 
+        id,
+        created_at,
+        'lote_published' as activity_type,
+        'Lote publicado: ' || animal_type || ' (' || total_count || ' unidades)' as description
+      FROM lotes
+      WHERE seller_id = $1
+    `;
+
+    const ordersQuery = `
+      SELECT 
+        id,
+        created_at,
+        'order_created' as activity_type,
+        'Orden creada' as description
+      FROM orders
+      WHERE user_id = $1
+    `;
+
+    // Combinar todas las queries
+    const unionQuery = `
+      ${userQuery}
+      UNION ALL
+      ${certQuery}
+      UNION ALL
+      ${lotesQuery}
+    `;
+
+    // Ejecutar la consulta principal
+    let result;
+    try {
+      result = await pool.query(`
+        SELECT * FROM (${unionQuery}) as combined
+        ORDER BY created_at DESC
+      `, [userId]);
+    } catch (certError) {
+      // Si falla (por ejemplo, tabla certifications no existe), intentar sin certificaciones
+      console.log('Trying without certifications table:', certError.message);
+      result = await pool.query(`
+        SELECT * FROM (
+          ${userQuery}
+          UNION ALL
+          ${lotesQuery}
+        ) as combined
+        ORDER BY created_at DESC
+      `, [userId]);
+    }
+
+    // Intentar agregar órdenes si la tabla existe
+    try {
+      const ordersResult = await pool.query(ordersQuery, [userId]);
+      if (ordersResult.rows.length > 0) {
+        result.rows = [...result.rows, ...ordersResult.rows].sort((a, b) => 
+          new Date(b.created_at) - new Date(a.created_at)
+        );
+      }
+    } catch (ordersError) {
+      console.log('Orders table not available:', ordersError.message);
+    }
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching user activity:', error);
+    res.status(500).json({ error: 'Error al obtener actividad del usuario', details: error.message });
   }
 };

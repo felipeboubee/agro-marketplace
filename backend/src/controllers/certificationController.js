@@ -91,6 +91,80 @@ const certificationController = {
     }
   },
 
+  // Actualizar certificación (cuando banco solicita más datos)
+  async updateCertification(req, res) {
+    try {
+      const { id } = req.params;
+      const user_id = req.userId;
+      const { bank_name, personal_info, employment_info, financial_info } = req.body;
+
+      // Verificar que la certificación existe y pertenece al usuario
+      const certQuery = await pool.query(
+        'SELECT * FROM certifications WHERE id = $1 AND user_id = $2',
+        [id, user_id]
+      );
+
+      if (certQuery.rows.length === 0) {
+        return res.status(404).json({ error: 'Certificación no encontrada' });
+      }
+
+      const certification = certQuery.rows[0];
+
+      // Solo se puede actualizar si el estado es 'mas_datos'
+      if (certification.status !== 'mas_datos') {
+        return res.status(400).json({ 
+          error: 'Solo puedes actualizar certificaciones que requieren más datos' 
+        });
+      }
+
+      // Preparar datos actualizados
+      let income_proof_path = certification.income_proof_path;
+      if (req.file) {
+        income_proof_path = `/uploads/certifications/${req.file.filename}`;
+      }
+
+      // Parsear los JSON strings si vienen como string
+      const parsedPersonalInfo = typeof personal_info === 'string' ? JSON.parse(personal_info) : personal_info;
+      const parsedEmploymentInfo = typeof employment_info === 'string' ? JSON.parse(employment_info) : employment_info;
+      const parsedFinancialInfo = typeof financial_info === 'string' ? JSON.parse(financial_info) : financial_info;
+
+      // Actualizar la certificación
+      const updateQuery = `
+        UPDATE certifications 
+        SET 
+          bank_name = $1,
+          personal_info = $2,
+          employment_info = $3,
+          financial_info = $4,
+          income_proof_path = $5,
+          status = 'pendiente_aprobacion',
+          notes = NULL,
+          updated_at = NOW()
+        WHERE id = $6
+        RETURNING *
+      `;
+
+      const values = [
+        bank_name,
+        JSON.stringify(parsedPersonalInfo),
+        JSON.stringify(parsedEmploymentInfo),
+        JSON.stringify(parsedFinancialInfo),
+        income_proof_path,
+        id
+      ];
+
+      const result = await pool.query(updateQuery, values);
+
+      res.json({
+        message: 'Certificación actualizada exitosamente',
+        certification: result.rows[0]
+      });
+    } catch (error) {
+      console.error('Error updating certification:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  },
+
   // Obtener certificaciones pendientes para un banco
   async getBankPendingCertifications(req, res) {
     try {

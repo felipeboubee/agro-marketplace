@@ -23,36 +23,96 @@ const countries = [
   'Portugal', 'República Dominicana', 'Uruguay', 'Venezuela', 'Otros'
 ];
 
-const CertificationForm = ({ onSuccess }) => {
+const CertificationForm = ({ onSuccess, editingCertification }) => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [dateInput, setDateInput] = useState(''); // Estado local para el input de fecha
-  const [formData, setFormData] = useState({
-    bank_name: '',
-    personal_info: {
-      first_name: '',
-      second_name: '',
-      last_name: '',
-      dni: '',
-      birth_date: '',
-      nationality: 'Argentina'
-    },
-    employment_info: {
-      employment_status: 'empleado',
-      employer_name: '',
-      position: '',
-      monthly_income: '',
-      years_employed: ''
-    },
-    financial_info: {
-      monthly_expenses: '',
-      assets: '',
-      liabilities: '',
-      income_proof: null
+  
+  // Inicializar dateInput con la fecha formateada si estamos editando
+  const [dateInput, setDateInput] = useState(() => {
+    if (editingCertification?.personal_info?.birth_date) {
+      const date = new Date(editingCertification.personal_info.birth_date);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
     }
+    return '';
+  });
+  
+  const [formData, setFormData] = useState(() => {
+    // Si estamos editando, pre-llenar con los datos existentes
+    if (editingCertification) {
+      // Formatear la fecha para el input
+      let formattedDate = '';
+      if (editingCertification.personal_info?.birth_date) {
+        const date = new Date(editingCertification.personal_info.birth_date);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        formattedDate = `${day}/${month}/${year}`;
+      }
+      
+      return {
+        bank_name: editingCertification.bank_name || '',
+        personal_info: {
+          first_name: editingCertification.personal_info?.first_name || '',
+          second_name: editingCertification.personal_info?.second_name || '',
+          last_name: editingCertification.personal_info?.last_name || '',
+          dni: editingCertification.personal_info?.dni || '',
+          birth_date: editingCertification.personal_info?.birth_date || '',
+          nationality: editingCertification.personal_info?.nationality || 'Argentina'
+        },
+        employment_info: {
+          employment_status: editingCertification.employment_info?.employment_status || 'empleado',
+          employer_name: editingCertification.employment_info?.employer_name || '',
+          position: editingCertification.employment_info?.position || '',
+          monthly_income: editingCertification.employment_info?.monthly_income || '',
+          years_employed: editingCertification.employment_info?.years_employed || ''
+        },
+        financial_info: {
+          monthly_expenses: editingCertification.financial_info?.monthly_expenses || '',
+          assets: editingCertification.financial_info?.assets || '',
+          liabilities: editingCertification.financial_info?.liabilities || '',
+          income_proof: null
+        },
+        _dateInputFormatted: formattedDate
+      };
+    }
+    
+    return {
+      bank_name: '',
+      personal_info: {
+        first_name: '',
+        second_name: '',
+        last_name: '',
+        dni: '',
+        birth_date: '',
+        nationality: 'Argentina'
+      },
+      employment_info: {
+        employment_status: 'empleado',
+        employer_name: '',
+        position: '',
+        monthly_income: '',
+        years_employed: ''
+      },
+      financial_info: {
+        monthly_expenses: '',
+        assets: '',
+        liabilities: '',
+        income_proof: null
+      }
+    };
   });
   const [loading, setLoading] = useState(false);
-  const [incomeProbFileName, setIncomeProbFileName] = useState('');
+  const [incomeProbFileName, setIncomeProbFileName] = useState(() => {
+    // Si estamos editando y ya hay un archivo, mostrar el nombre
+    if (editingCertification?.income_proof_path) {
+      const fileName = editingCertification.income_proof_path.split('/').pop();
+      return fileName;
+    }
+    return '';
+  });
 
   const handleChange = (path, value) => {
     const keys = path.split('.');
@@ -101,9 +161,15 @@ const CertificationForm = ({ onSuccess }) => {
         formDataToSend.append('income_proof', formData.financial_info.income_proof);
       }
       
-      await api.applyCertification(formDataToSend);
-      
-      alert('Solicitud enviada exitosamente. Tu estado aparecerá como pendiente de aprobación.');
+      if (editingCertification) {
+        // Actualizar certificación existente
+        await api.updateCertification(editingCertification.id, formDataToSend);
+        alert('Información actualizada exitosamente. El banco revisará los nuevos datos.');
+      } else {
+        // Crear nueva certificación
+        await api.applyCertification(formDataToSend);
+        alert('Solicitud enviada exitosamente. Tu estado aparecerá como pendiente de aprobación.');
+      }
       
       // Si hay una función onSuccess, llamarla en lugar de navegar
       if (onSuccess) {
@@ -113,7 +179,7 @@ const CertificationForm = ({ onSuccess }) => {
       }
     } catch (error) {
       console.error('Error submitting certification:', error);
-      alert('Error al enviar la solicitud');
+      alert(editingCertification ? 'Error al actualizar la información' : 'Error al enviar la solicitud');
     } finally {
       setLoading(false);
     }
@@ -327,15 +393,28 @@ const CertificationForm = ({ onSuccess }) => {
                 <input type="number" value={formData.financial_info.liabilities} onChange={(e) => handleChange('financial_info.liabilities', e.target.value)} placeholder="Deudas totales" />
               </div>
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                <label>Prueba de Ingresos *</label>
+                <label>Prueba de Ingresos {!editingCertification?.income_proof_path && '*'}</label>
                 <div className="file-upload-area">
                   <input type="file" id="income-proof" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style={{ display: 'none' }} />
                   <label htmlFor="income-proof" className="file-upload-label">
                     <Upload size={24} />
-                    <p>{incomeProbFileName ? `Archivo: ${incomeProbFileName}` : 'Haz clic para subir prueba de ingresos'}</p>
-                    <small>PDF, imágenes (JPG, PNG) o documentos Word. Máx. 5MB</small>
+                    <p>
+                      {incomeProbFileName 
+                        ? `Archivo: ${incomeProbFileName}` 
+                        : 'Haz clic para subir prueba de ingresos'}
+                    </p>
+                    <small>
+                      {editingCertification?.income_proof_path 
+                        ? 'Archivo actual cargado. Puedes subir uno nuevo si lo deseas.' 
+                        : 'PDF, imágenes (JPG, PNG) o documentos Word. Máx. 5MB'}
+                    </small>
                   </label>
                 </div>
+                {editingCertification?.income_proof_path && (
+                  <div style={{ marginTop: '8px', fontSize: '14px', color: '#28a745' }}>
+                    ✓ Ya tienes un archivo cargado. No es necesario subir uno nuevo a menos que quieras reemplazarlo.
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -372,7 +451,9 @@ const CertificationForm = ({ onSuccess }) => {
               </div>
               <div className="summary-item">
                 <strong>Prueba de Ingresos:</strong>
-                <span>{incomeProbFileName || 'No cargado'}</span>
+                <span>
+                  {incomeProbFileName || (editingCertification?.income_proof_path ? 'Archivo existente (sin cambios)' : 'No cargado')}
+                </span>
               </div>
             </div>
             
@@ -417,7 +498,16 @@ const CertificationForm = ({ onSuccess }) => {
 
       <div className="step-navigation">
         {step > 1 && <button type="button" onClick={prevStep} className="btn btn-outline">← Anterior</button>}
-        <button type="button" onClick={nextStep} className="btn btn-primary" disabled={loading || (step === 1 && !formData.bank_name) || (step === 3 && !formData.financial_info.income_proof)}>
+        <button 
+          type="button" 
+          onClick={nextStep} 
+          className="btn btn-primary" 
+          disabled={
+            loading || 
+            (step === 1 && !formData.bank_name) || 
+            (step === 3 && !formData.financial_info.income_proof && !editingCertification?.income_proof_path)
+          }
+        >
           {loading ? 'Enviando...' : step === 4 ? 'Enviar Solicitud' : 'Siguiente →'}
         </button>
       </div>

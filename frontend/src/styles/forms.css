@@ -1350,3 +1350,8 @@
   border-radius: var(--border-radius);
   margin-top: var(--spacing-sm);
 }
+
+/* Checkbox en confirmación */
+.checkbox-label input[type="checkbox"] {
+  margin-right: 5px;
+}

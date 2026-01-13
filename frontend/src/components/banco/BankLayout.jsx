@@ -2,7 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import BankSidebar from "./BankSidebar";
 import BankDashboard from "../../pages/banco/BankDashboard";
 import CertificationRequests from "../../pages/banco/CertificationRequests";
-import PendingCertifications from "../../pages/banco/ApprovedCertifications";
+import PendingCertifications from "../../pages/banco/PendingCertifications";
 import BankSettings from "../../pages/banco/BankSettings";
 import NotFound from "../../pages/NotFound";
 import "../../styles/admin.css";
