@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   FileCheck,
-  CheckCircle,
+  Clock,
   LogOut,
   Settings,
   Menu,
@@ -23,7 +23,7 @@ export default function BankSidebar() {
   const navItems = [
     { path: "/banco", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
     { path: "/banco/solicitudes", icon: <FileCheck size={20} />, label: "Solicitudes" },
-    { path: "/banco/aprobadas", icon: <CheckCircle size={20} />, label: "Aprobadas" },
+    { path: "/banco/aprobadas", icon: <Clock size={20} />, label: "Pendientes" },
     { path: "/banco/configuracion", icon: <Settings size={20} />, label: "Configuración" },
   ];
 

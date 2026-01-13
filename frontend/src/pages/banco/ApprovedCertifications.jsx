@@ -1,48 +1,56 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, FileText, Calendar } from 'lucide-react';
+import { Clock, FileText, Calendar, Eye, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import '../../styles/dashboard.css';
 
-export default function ApprovedCertifications() {
+export default function PendingCertifications() {
   const [certifications, setCertifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetchApprovedCertifications();
+    fetchPendingCertifications();
   }, []);
 
-  const fetchApprovedCertifications = async () => {
+  const fetchPendingCertifications = async () => {
     try {
       setLoading(true);
-      // TODO: Implementar endpoint en el backend
-      // const response = await api.getApprovedCertifications();
-      // setCertifications(response);
-      setCertifications([]);
+      const response = await api.getBankCertifications();
+      // Filtrar solo las pendientes
+      const pending = response.filter(cert => cert.status === 'pendiente_aprobacion');
+      setCertifications(pending);
     } catch (error) {
-      console.error('Error fetching approved certifications:', error);
+      console.error('Error fetching pending certifications:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleViewDetails = (certId) => {
+    navigate('/banco/solicitudes');
+  };
+
   if (loading) {
-    return <div className="loading-container">Cargando certificaciones aprobadas...</div>;
+    return <div className="loading-container">Cargando solicitudes pendientes...</div>;
   }
 
   return (
     <div className="dashboard-container">
       <div className="page-header">
-        <h1><CheckCircle size={32} />Certificaciones Aprobadas</h1>
-        <p>Historial de certificaciones financieras aprobadas</p>
+        <h1><Clock size={32} />Solicitudes Pendientes</h1>
+        <p>Certificaciones financieras pendientes de revisión</p>
       </div>
 
       <div className="stats-grid">
-        <div className="stat-card stat-success">
+        <div className="stat-card stat-blue">
           <div className="stat-icon">
-            <CheckCircle size={24} />
+            <Clock size={24} />
           </div>
           <div className="stat-content">
-            <h3>Total Aprobadas</h3>
+            <h3>Solicitudes Pendientes</h3>
             <p className="stat-value">{certifications.length}</p>
           </div>
         </div>
@@ -50,39 +58,46 @@ export default function ApprovedCertifications() {
 
       {certifications.length === 0 ? (
         <div className="empty-state">
-          <CheckCircle size={64} />
-          <h3>No hay certificaciones aprobadas</h3>
-          <p>Aquí aparecerán las certificaciones que hayas aprobado</p>
+          <Clock size={64} />
+          <h3>No hay solicitudes pendientes</h3>
+          <p>Todas las solicitudes han sido revisadas</p>
         </div>
       ) : (
-        <div className="data-table-container">
+        <div className="table-container">
           <table className="data-table">
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Comprador</th>
-                <th>Lote</th>
-                <th>Monto</th>
-                <th>Fecha Aprobación</th>
-                <th>Detalles</th>
+                <th>Solicitante</th>
+                <th>Email</th>
+                <th>Fecha Solicitud</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {certifications.map((cert) => (
                 <tr key={cert.id}>
-                  <td>#{cert.id}</td>
-                  <td>{cert.buyer_name}</td>
-                  <td>{cert.lote_name}</td>
-                  <td>${cert.amount?.toLocaleString('es-AR')}</td>
+                  <td className="id-cell">#{cert.id}</td>
+                  <td>
+                    <div className="cell-with-icon">
+                      <User size={16} />
+                      {cert.user_name}
+                    </div>
+                  </td>
+                  <td>{cert.email}</td>
                   <td>
                     <div className="cell-with-icon">
                       <Calendar size={16} />
-                      {new Date(cert.approved_at).toLocaleDateString('es-AR')}
+                      {format(new Date(cert.created_at), "dd/MM/yyyy", { locale: es })}
                     </div>
                   </td>
                   <td>
-                    <button className="btn-sm btn-secondary">
-                      <FileText size={16} />
+                    <button 
+                      className="btn btn-sm btn-primary"
+                      onClick={() => navigate('/banco/solicitudes')}
+                      title="Ver detalles"
+                    >
+                      <Eye size={16} />
                       Ver
                     </button>
                   </td>

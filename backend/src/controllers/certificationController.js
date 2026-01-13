@@ -158,7 +158,11 @@ const certificationController = {
       const certification = certQuery.rows[0];
 
       // Verificar que el banco es el correcto
-      if (reviewer.name !== certification.bank_name) {
+      if (!reviewer.bank_name) {
+        return res.status(400).json({ error: 'Usuario banco no tiene banco asignado' });
+      }
+
+      if (reviewer.bank_name !== certification.bank_name) {
         return res.status(403).json({ error: 'No tienes permiso para modificar esta certificación' });
       }
 

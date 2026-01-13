@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { FileCheck, Filter, RefreshCw, Eye, User, Clock, CheckCircle, XCircle, Calendar, DollarSign } from 'lucide-react';
+import { FileCheck, Filter, RefreshCw, Eye, User, Clock, CheckCircle, XCircle, Calendar, DollarSign, Upload } from 'lucide-react';
 import '../../styles/dashboard.css';
 
 const CertificationRequests = () => {
@@ -329,7 +329,6 @@ const CertificationRequests = () => {
                   <th>ID</th>
                   <th>Solicitante</th>
                   <th>Email</th>
-                  <th>Banco</th>
                   <th>Estado</th>
                   <th>Fecha Solicitud</th>
                   <th>Acciones</th>
@@ -345,8 +344,7 @@ const CertificationRequests = () => {
                         {request.user_name}
                       </div>
                     </td>
-                    <td className="cell-secondary">{request.email}</td>
-                    <td>{request.bank_name}</td>
+                    <td>{request.email}</td>
                     <td>{getStatusBadge(request.status)}</td>
                     <td>
                       <div className="cell-with-icon">
@@ -379,39 +377,117 @@ const CertificationRequests = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Detalle de Solicitud #{selectedRequest.id}</h2>
-              <button onClick={() => setSelectedRequest(null)} className="btn btn-icon">×</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {getStatusBadge(selectedRequest.status)}
+                <button onClick={() => setSelectedRequest(null)} className="btn btn-icon">×</button>
+              </div>
             </div>
             
             <div className="modal-body">
-              <div className="detail-section">
-                <h3>Información Personal</h3>
-                <div className="detail-grid">
-                  <div className="detail-item">
-                    <strong>Nombre:</strong> {selectedRequest.user_name}
-                  </div>
-                  <div className="detail-item">
-                    <strong>Email:</strong> {selectedRequest.email}
-                  </div>
-                  <div className="detail-item">
-                    <strong>Teléfono:</strong> {selectedRequest.phone || 'No proporcionado'}
-                  </div>
-                  <div className="detail-item">
-                    <strong>Estado:</strong> {getStatusBadge(selectedRequest.status)}
+              {/* Datos Personales - Combinado con Información del Solicitante */}
+              {selectedRequest.personal_info && (
+                <div className="detail-section">
+                  <h3>Datos Personales</h3>
+                  <div className="detail-grid">
+                    <div className="detail-item">
+                      <strong>Email:</strong> {selectedRequest.email}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Teléfono:</strong> {selectedRequest.phone || '—'}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Primer Nombre:</strong> {selectedRequest.personal_info.first_name || '—'}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Segundo Nombre:</strong> {selectedRequest.personal_info.second_name || '—'}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Apellido:</strong> {selectedRequest.personal_info.last_name || '—'}
+                    </div>
+                    <div className="detail-item">
+                      <strong>DNI:</strong> {selectedRequest.personal_info.dni || '—'}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Fecha de Nacimiento:</strong> {selectedRequest.personal_info.birth_date ? format(new Date(selectedRequest.personal_info.birth_date), "dd/MM/yyyy", { locale: es }) : '—'}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Nacionalidad:</strong> {selectedRequest.personal_info.nationality || '—'}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {selectedRequest.employment_info && (
+                <div className="detail-section">
+                  <h3>Información Laboral</h3>
+                  <div className="detail-grid">
+                    <div className="detail-item">
+                      <strong>Estado Laboral:</strong> {selectedRequest.employment_info.employment_status === 'empleado' ? 'Empleado' : selectedRequest.employment_info.employment_status === 'autonomo' ? 'Autónomo' : selectedRequest.employment_info.employment_status === 'empresario' ? 'Empresario' : 'Desempleado'}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Empleador:</strong> {selectedRequest.employment_info.employer_name || '—'}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Cargo:</strong> {selectedRequest.employment_info.position || '—'}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Ingreso Mensual:</strong> {selectedRequest.employment_info.monthly_income ? `$${parseFloat(selectedRequest.employment_info.monthly_income).toLocaleString('es-AR')}` : '—'}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Años Empleado:</strong> {selectedRequest.employment_info.years_employed || '—'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedRequest.financial_info && (
+                <div className="detail-section">
+                  <h3>Información Financiera</h3>
+                  <div className="detail-grid">
+                    <div className="detail-item">
+                      <strong>Gastos Mensuales:</strong> {selectedRequest.financial_info.monthly_expenses ? `$${parseFloat(selectedRequest.financial_info.monthly_expenses).toLocaleString('es-AR')}` : '—'}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Activos:</strong> {selectedRequest.financial_info.assets ? `$${parseFloat(selectedRequest.financial_info.assets).toLocaleString('es-AR')}` : '—'}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Pasivos:</strong> {selectedRequest.financial_info.liabilities ? `$${parseFloat(selectedRequest.financial_info.liabilities).toLocaleString('es-AR')}` : '—'}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="detail-section">
-                <h3>Datos Financieros</h3>
+                <h3>Información Bancaria y Solicitud</h3>
                 <div className="detail-grid">
                   <div className="detail-item">
-                    <strong>Banco:</strong> {selectedRequest.bank_name}
+                    <strong>Banco Solicitado:</strong> {selectedRequest.bank_name}
                   </div>
                   <div className="detail-item">
                     <strong>Fecha de Solicitud:</strong> {format(new Date(selectedRequest.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
                   </div>
+                  {selectedRequest.reviewed_at && (
+                    <div className="detail-item">
+                      <strong>Fecha de Revisión:</strong> {format(new Date(selectedRequest.reviewed_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {selectedRequest.income_proof_path && (
+                <div className="detail-section">
+                  <h3>Documentación</h3>
+                  <a 
+                    href={`http://localhost:5000${selectedRequest.income_proof_path}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-outline"
+                  >
+                    <Upload size={18} />
+                    Ver Comprobante de Ingresos
+                  </a>
+                </div>
+              )}
 
               {selectedRequest.status === 'pendiente_aprobacion' && (
                 <div className="modal-actions">

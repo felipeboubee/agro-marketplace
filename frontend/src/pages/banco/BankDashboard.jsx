@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Clock, DollarSign, Users } from 'lucide-react';
+import { CheckCircle, Clock, DollarSign, Users, Eye, User, Calendar } from 'lucide-react';
 import { api } from '../../services/api';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import '../../styles/dashboard.css';
 
 export default function BankDashboard() {
@@ -14,13 +16,26 @@ export default function BankDashboard() {
     approvalRate: 0,
     avgResponseTime: 0
   });
+  const [recentRequests, setRecentRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   const loadDashboardData = async () => {
     try {
-      const data = await api.getBankStats();
-      setStats(data);
+      const [statsData, certificationsData] = await Promise.all([
+        api.getBankStats(),
+        api.getBankCertifications()
+      ]);
+      
+      setStats(statsData);
+      
+      // Obtener las 5 solicitudes pendientes más recientes
+      const pending = certificationsData
+        .filter(cert => cert.status === 'pendiente_aprobacion')
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 5);
+      
+      setRecentRequests(pending);
     } catch (error) {
       console.error('Error loading bank dashboard:', error);
     } finally {
@@ -115,11 +130,69 @@ export default function BankDashboard() {
             onClick={() => navigate('/banco/aprobadas')}
           >
             <CheckCircle size={32} />
-            <h3>Certificaciones Aprobadas</h3>
-            <p>Ver historial de certificaciones</p>
+            <h3>Solicitudes Pendientes</h3>
+            <p>Ver solicitudes que requieren revisión</p>
           </button>
         </div>
       </div>
+
+      {/* Recent Pending Requests */}
+      {recentRequests.length > 0 && (
+        <div className="dashboard-section">
+          <div className="section-header">
+            <h2>Solicitudes Pendientes Recientes</h2>
+            <button 
+              className="btn btn-secondary"
+              onClick={() => navigate('/banco/solicitudes')}
+            >
+              Ver Todas
+            </button>
+          </div>
+          
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Solicitante</th>
+                  <th>Email</th>
+                  <th>Fecha</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentRequests.map((request) => (
+                  <tr key={request.id}>
+                    <td className="id-cell">#{request.id}</td>
+                    <td>
+                      <div className="cell-with-icon">
+                        <User size={16} />
+                        {request.user_name}
+                      </div>
+                    </td>
+                    <td>{request.email}</td>
+                    <td>
+                      <div className="cell-with-icon">
+                        <Calendar size={16} />
+                        {format(new Date(request.created_at), "dd/MM/yyyy", { locale: es })}
+                      </div>
+                    </td>
+                    <td>
+                      <button 
+                        className="btn btn-sm btn-primary"
+                        onClick={() => navigate('/banco/solicitudes')}
+                        title="Ver detalles"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
