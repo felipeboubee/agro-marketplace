@@ -96,9 +96,9 @@ const Signup = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
+    <div className="auth-container-centered">
+      <div className="auth-card-expanded">
+        <div className="auth-header-centered">
           <Link to="/" className="back-home">
             ← Volver al inicio
           </Link>
@@ -311,43 +311,6 @@ const Signup = () => {
               Inicia sesión aquí
             </Link>
           </p>
-        </div>
-      </div>
-
-      <div className="auth-sidebar">
-        <div className="sidebar-content">
-          <h3>Beneficios según tu perfil</h3>
-          <div className="benefits-grid">
-            <div className="benefit-card">
-              <div className="benefit-icon">👨‍🌾</div>
-              <h4>Vendedor</h4>
-              <ul>
-                <li>Publica lotes fácilmente</li>
-                <li>Accede a precios de mercado</li>
-                <li>Gestiona transacciones</li>
-              </ul>
-            </div>
-
-            <div className="benefit-card">
-              <div className="benefit-icon">🏢</div>
-              <h4>Comprador</h4>
-              <ul>
-                <li>Encuentra el mejor ganado</li>
-                <li>Solicita certificación bancaria</li>
-                <li>Múltiples opciones de pago</li>
-              </ul>
-            </div>
-
-            <div className="benefit-card">
-              <div className="benefit-icon">🏦</div>
-              <h4>Banco</h4>
-              <ul>
-                <li>Gestiona certificaciones</li>
-                <li>Monitorea transacciones</li>
-                <li>Expande tu cartera</li>
-              </ul>
-            </div>
-          </div>
         </div>
       </div>
     </div>

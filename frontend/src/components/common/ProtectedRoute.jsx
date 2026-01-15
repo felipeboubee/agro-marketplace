@@ -35,7 +35,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     };
 
     verifyAuth();
-  }, []);
+  }, [location.pathname]); // Re-verificar cuando cambia la ruta
 
   if (status === 'loading') {
     return (

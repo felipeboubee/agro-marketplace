@@ -7,7 +7,9 @@ import {
   Settings,
   Menu,
   X,
-  RefreshCw
+  RefreshCw,
+  ShoppingBag,
+  Clock
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../services/api";
@@ -45,6 +47,8 @@ export default function BuyerSidebar() {
   const navItems = [
     { path: "/comprador", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
     { path: "/comprador/lotes", icon: <ShoppingCart size={20} />, label: "Ver Lotes" },
+    { path: "/comprador/mis-compras", icon: <ShoppingBag size={20} />, label: "Mis Compras" },
+    { path: "/comprador/solicitudes", icon: <Clock size={20} />, label: "Solicitudes de Compra" },
     { path: "/comprador/certificaciones", icon: <FileCheck size={20} />, label: "Certificación Financiera" },
     { path: "/comprador/configuracion", icon: <Settings size={20} />, label: "Configuración" },
   ];

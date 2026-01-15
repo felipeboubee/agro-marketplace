@@ -10,7 +10,7 @@ const authController = {
       // Verificar si el usuario ya existe con ese email Y tipo
       const existingUser = await User.findByEmailAndType(email, user_type);
       if (existingUser) {
-        return res.status(400).json({ error: `Ya existe un usuario ${user_type} con este email` });
+        return res.status(400).json({ error: 'Ya existe un usuario con este email' });
       }
 
       // Validar que si es banco, tenga bank_name

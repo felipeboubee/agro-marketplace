@@ -7,7 +7,10 @@ const userRoutes = require('./routes/userRoutes');
 const loteRoutes = require('./routes/loteRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const certificationRoutes = require('./routes/certificationRoutes');
-const adminRoutes = require('./routes/adminRoutes')
+const adminRoutes = require('./routes/adminRoutes');
+const questionRoutes = require('./routes/questionRoutes');
+const offerRoutes = require('./routes/offerRoutes');
+const favoriteRoutes = require('./routes/favoriteRoutes');
 const initAdminTables = require('../scripts/initAdminTables');
 const requestLogger = require('./middleware/requestLogger');
 
@@ -34,6 +37,9 @@ app.use('/api/lotes', loteRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/certifications', certificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/questions', questionRoutes);
+app.use('/api/offers', offerRoutes);
+app.use('/api/favorites', favoriteRoutes);
 app.use(requestLogger);
 
 // Ruta de prueba

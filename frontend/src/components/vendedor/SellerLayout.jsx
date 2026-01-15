@@ -5,6 +5,7 @@ import CreateLote from "../../pages/vendedor/CreateLote";
 import MyLotes from "../../pages/vendedor/MyLotes";
 import LoteDetail from "../../pages/vendedor/LoteDetail";
 import SellerSettings from "../../pages/vendedor/SellerSettings";
+import PurchaseRequests from "../../pages/vendedor/PurchaseRequests";
 import NotFound from "../../pages/NotFound";
 import "../../styles/admin.css";
 
@@ -19,6 +20,7 @@ export default function SellerLayout() {
             <Route path="/crear" element={<CreateLote />} />
             <Route path="/mis-lotes" element={<MyLotes />} />
             <Route path="/lote/:id" element={<LoteDetail />} />
+            <Route path="/solicitudes" element={<PurchaseRequests />} />
             <Route path="/configuracion" element={<SellerSettings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

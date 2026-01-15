@@ -220,26 +220,13 @@ const Login = () => {
               Regístrate aquí
             </Link>
           </p>
-          <div className="social-login">
-            <p>O inicia sesión con:</p>
-            <div className="social-buttons">
-              <button type="button" className="btn btn-outline btn-social">
-                <img src="/google-icon.png" alt="Google" />
-                Google
-              </button>
-              <button type="button" className="btn btn-outline btn-social">
-                <img src="/facebook-icon.png" alt="Facebook" />
-                Facebook
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
       <div className="auth-sidebar">
         <div className="sidebar-content">
           <h3>Bienvenido de nuevo</h3>
-          <p>
+          <p className="sidebar-text-login">
             Accede a tu panel personalizado según tu perfil:
           </p>
           <ul className="user-types">

@@ -17,9 +17,11 @@ import '../../styles/dashboard.css';
 
 export default function LoteList() {
   const [lotes, setLotes] = useState([]);
+  const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
+  const [activeTab, setActiveTab] = useState('all'); // 'all' or 'favorites'
   const [filters, setFilters] = useState({
     localidad: '',
     provincia: '',
@@ -42,11 +44,27 @@ export default function LoteList() {
     }
   };
 
+  const fetchFavorites = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const response = await api.get('/favorites', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setFavorites(Array.isArray(response) ? response : []);
+      }
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+      setFavorites([]);
+    }
+  };
+
   useEffect(() => {
     fetchLotes();
+    fetchFavorites();
   }, []);
 
-  const filteredLotes = lotes.filter(lote => {
+  const filteredLotes = (activeTab === 'all' ? lotes : favorites).filter(lote => {
     // Solo mostrar lotes ofertados
     if (lote.status !== 'ofertado') return false;
 
@@ -87,6 +105,7 @@ export default function LoteList() {
   const handleRefresh = () => {
     setLoading(true);
     fetchLotes();
+    fetchFavorites();
   };
 
   const resetFilters = () => {
@@ -142,6 +161,22 @@ export default function LoteList() {
             Actualizar
           </button>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="tabs-container">
+        <button 
+          className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
+          onClick={() => setActiveTab('all')}
+        >
+          Todos los Lotes ({lotes.filter(l => l.status === 'ofertado').length})
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'favorites' ? 'active' : ''}`}
+          onClick={() => setActiveTab('favorites')}
+        >
+          Mis Favoritos ({favorites.filter(l => l.status === 'ofertado').length})
+        </button>
       </div>
 
       {/* Filtros */}

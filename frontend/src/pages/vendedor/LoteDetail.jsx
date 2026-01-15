@@ -17,6 +17,10 @@ export default function LoteDetail() {
   const [photoURLs, setPhotoURLs] = useState([]);
   const [photosToKeep, setPhotosToKeep] = useState([]); // URLs de fotos existentes que se mantienen
   const [newVideoURL, setNewVideoURL] = useState('');
+  const [questions, setQuestions] = useState([]);
+  const [answerText, setAnswerText] = useState({});
+  const [loadingAnswer, setLoadingAnswer] = useState({});
+  const [answerError, setAnswerError] = useState({});
 
   const uniformityOptions = [
     { value: 'poco_uniforme', label: 'Poco uniforme' },
@@ -59,8 +63,56 @@ export default function LoteDetail() {
       }
     };
 
+    const fetchQuestions = async () => {
+      try {
+        const response = await api.get(`/questions/lote/${id}`);
+        setQuestions(response);
+      } catch (error) {
+        console.error('Error fetching questions:', error);
+      }
+    };
+
     fetchLoteDetails();
+    fetchQuestions();
   }, [id]);
+
+  const handleSubmitAnswer = async (questionId) => {
+    const answer = answerText[questionId];
+    
+    if (!answer || !answer.trim()) {
+      setAnswerError({ ...answerError, [questionId]: 'La respuesta no puede estar vacía' });
+      return;
+    }
+    
+    setLoadingAnswer({ ...loadingAnswer, [questionId]: true });
+    setAnswerError({ ...answerError, [questionId]: '' });
+    
+    try {
+      const token = localStorage.getItem('token');
+      await api.post(`/questions/${questionId}/answer`, {
+        answer_text: answer
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Clear answer text and reload questions
+      setAnswerText({ ...answerText, [questionId]: '' });
+      
+      // Refetch questions to show the new answer
+      const response = await api.get(`/questions/lote/${id}`);
+      setQuestions(response);
+      
+      alert('Respuesta enviada exitosamente');
+    } catch (error) {
+      console.error('Error submitting answer:', error);
+      setAnswerError({ 
+        ...answerError, 
+        [questionId]: error.response?.data?.error || 'Error al enviar la respuesta' 
+      });
+    } finally {
+      setLoadingAnswer({ ...loadingAnswer, [questionId]: false });
+    }
+  };
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -533,6 +585,93 @@ export default function LoteDetail() {
               )}
             </div>
           )}
+
+          {/* Sección de Consultas */}
+          <div className="info-card">
+            <h2>Consultas de Compradores ({questions.length})</h2>
+            
+            <div className="questions-list">
+              {questions.length === 0 ? (
+                <div className="empty-questions">
+                  <i className="fas fa-question-circle" style={{ fontSize: '48px', color: '#ccc', marginBottom: '10px' }}></i>
+                  <p>Aún no hay consultas sobre este lote</p>
+                </div>
+              ) : (
+                questions.map((question) => (
+                  <div key={question.id} className="question-item">
+                    <div className="question-header">
+                      <div className="question-author">
+                        <i className="fas fa-user-circle"></i>
+                        <span className="author-name">{question.buyer_name}</span>
+                      </div>
+                      <span className="question-date">
+                        {format(new Date(question.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
+                      </span>
+                    </div>
+                    <div className="question-text">
+                      <strong>Pregunta:</strong> {question.question_text}
+                    </div>
+                    
+                    {/* Respuestas existentes */}
+                    {question.answers && question.answers.length > 0 && (
+                      <div className="answers-list">
+                        {question.answers.map((answer) => (
+                          <div key={answer.id} className="answer-item">
+                            <div className="answer-header">
+                              <div className="answer-author">
+                                <i className="fas fa-store"></i>
+                                <span className="author-name">{answer.seller_name} <span className="vendor-badge">Vendedor</span></span>
+                              </div>
+                              <span className="answer-date">
+                                {format(new Date(answer.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
+                              </span>
+                            </div>
+                            <div className="answer-text">
+                              <strong>Respuesta:</strong> {answer.answer_text}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Formulario para responder */}
+                    {question.answers.length === 0 && (
+                      <div className="answer-form">
+                        <h4>Responder</h4>
+                        <p className="form-hint">
+                          <strong>No está permitido compartir información de contacto</strong> (email, teléfono, WhatsApp).
+                        </p>
+                        <textarea
+                          value={answerText[question.id] || ''}
+                          onChange={(e) => setAnswerText({ ...answerText, [question.id]: e.target.value })}
+                          placeholder="Escribe tu respuesta aquí..."
+                          rows="3"
+                          maxLength="1000"
+                          disabled={loadingAnswer[question.id]}
+                        />
+                        <small className="char-count">
+                          {(answerText[question.id] || '').length}/1000 caracteres
+                        </small>
+                        {answerError[question.id] && (
+                          <div className="error-message" style={{ color: '#d32f2f', marginTop: '5px', fontSize: '14px' }}>
+                            {answerError[question.id]}
+                          </div>
+                        )}
+                        <button 
+                          onClick={() => handleSubmitAnswer(question.id)}
+                          className="btn btn-primary"
+                          disabled={loadingAnswer[question.id] || !(answerText[question.id] || '').trim()}
+                          style={{ marginTop: '10px' }}
+                        >
+                          {loadingAnswer[question.id] ? 'Enviando...' : 'Enviar Respuesta'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
           <div className="info-card">
             <h2>Cambiar Estado</h2>

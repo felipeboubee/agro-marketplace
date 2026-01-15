@@ -24,14 +24,41 @@ const LoteDetail = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
+  const [questions, setQuestions] = useState([]);
+  const [newQuestion, setNewQuestion] = useState('');
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [questionError, setQuestionError] = useState('');
+  const [hasOffer, setHasOffer] = useState(false);
 
   useEffect(() => {
     fetchLoteDetails();
+    fetchQuestions();
+    checkExistingOffer();
     const userData = localStorage.getItem('user');
     if (userData) {
       setUser(JSON.parse(userData));
     }
   }, [id]);
+
+  const checkExistingOffer = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const response = await api.get('/offers', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Check if there's a pending offer for this lote
+      const offerExists = response.some(offer => 
+        offer.lote_id === parseInt(id) && offer.status === 'pendiente'
+      );
+      
+      setHasOffer(offerExists);
+    } catch (error) {
+      console.error('Error checking existing offer:', error);
+    }
+  };
 
   const fetchLoteDetails = async () => {
     try {
@@ -122,6 +149,7 @@ const LoteDetail = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       
+      setHasOffer(true);
       alert('Oferta enviada exitosamente');
       setShowOfferModal(false);
     } catch (error) {
@@ -160,6 +188,56 @@ const LoteDetail = () => {
   const calculateTotalValue = () => {
     if (!lote) return 0;
     return lote.total_count * lote.average_weight * lote.base_price;
+  };
+
+  const fetchQuestions = async () => {
+    try {
+      const response = await api.get(`/questions/lote/${id}`);
+      setQuestions(response);
+    } catch (error) {
+      console.error('Error fetching questions:', error);
+    }
+  };
+
+  const handleSubmitQuestion = async (e) => {
+    e.preventDefault();
+    
+    if (!user) {
+      alert('Debes iniciar sesión para hacer una pregunta');
+      navigate('/login');
+      return;
+    }
+    
+    if (user.user_type !== 'comprador') {
+      alert('Solo los compradores pueden hacer preguntas');
+      return;
+    }
+    
+    if (!newQuestion.trim()) {
+      setQuestionError('La pregunta no puede estar vacía');
+      return;
+    }
+    
+    setLoadingQuestions(true);
+    setQuestionError('');
+    
+    try {
+      const token = localStorage.getItem('token');
+      await api.post(`/questions/lote/${id}`, {
+        question_text: newQuestion
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setNewQuestion('');
+      await fetchQuestions();
+      alert('Pregunta enviada exitosamente');
+    } catch (error) {
+      console.error('Error submitting question:', error);
+      setQuestionError(error.response?.data?.error || 'Error al enviar la pregunta');
+    } finally {
+      setLoadingQuestions(false);
+    }
   };
 
   if (loading) {
@@ -233,8 +311,14 @@ const LoteDetail = () => {
             {isFavorite ? ' Quitado de Favoritos' : ' Agregar a Favoritos'}
           </button>
           {user?.user_type === 'comprador' && lote.status === 'ofertado' && (
-            <button onClick={handleMakeOffer} className="btn btn-primary">
-              <i className="fas fa-handshake"></i> Hacer Oferta
+            <button 
+              onClick={hasOffer ? null : handleMakeOffer} 
+              className={`btn ${hasOffer ? 'btn-secondary' : 'btn-primary'}`}
+              disabled={hasOffer}
+              style={{ cursor: hasOffer ? 'not-allowed' : 'pointer' }}
+            >
+              <i className={`fas fa-${hasOffer ? 'clock' : 'handshake'}`}></i> 
+              {hasOffer ? ' Oferta Pendiente' : ' Hacer Oferta'}
             </button>
           )}
         </div>
@@ -510,12 +594,6 @@ const LoteDetail = () => {
               </div>
               <div className="seller-details">
                 <h4>{lote.seller_name || 'Vendedor'}</h4>
-                <p className="seller-email">
-                  <i className="fas fa-envelope"></i> {lote.seller_email}
-                </p>
-                <p className="seller-phone">
-                  <i className="fas fa-phone"></i> {lote.seller_phone || 'No disponible'}
-                </p>
                 <div className="seller-rating">
                   <i className="fas fa-star"></i>
                   <i className="fas fa-star"></i>
@@ -526,9 +604,6 @@ const LoteDetail = () => {
                 </div>
               </div>
             </div>
-            <button className="btn btn-outline btn-block">
-              <i className="fas fa-comment"></i> Contactar al Vendedor
-            </button>
           </div>
 
           {/* Acciones rápidas */}
@@ -542,8 +617,14 @@ const LoteDetail = () => {
                   <button onClick={handlePurchase} className="btn btn-primary btn-block">
                     <i className="fas fa-shopping-cart"></i> Comprar Ahora
                   </button>
-                  <button onClick={handleMakeOffer} className="btn btn-outline btn-block">
-                    <i className="fas fa-handshake"></i> Hacer Oferta
+                  <button 
+                    onClick={hasOffer ? null : handleMakeOffer} 
+                    className={`btn ${hasOffer ? 'btn-secondary' : 'btn-outline'} btn-block`}
+                    disabled={hasOffer}
+                    style={{ cursor: hasOffer ? 'not-allowed' : 'pointer', opacity: hasOffer ? 0.7 : 1 }}
+                  >
+                    <i className={`fas fa-${hasOffer ? 'clock' : 'handshake'}`}></i> 
+                    {hasOffer ? ' Oferta Pendiente' : ' Hacer Oferta'}
                   </button>
                 </>
               )}
@@ -619,6 +700,106 @@ const LoteDetail = () => {
           </div>
         </div>
       )}
+
+      {/* Sección de Consultas */}
+      <div className="detail-card full-width">
+        <h3>
+          <i className="fas fa-comments"></i> Consultas ({questions.length})
+        </h3>
+        
+        {/* Formulario para hacer preguntas */}
+        {user?.user_type === 'comprador' && lote.status === 'ofertado' && (
+          <div className="question-form">
+            <h4>Hacer una consulta</h4>
+            <p className="form-hint">
+              Haz preguntas sobre el lote. <strong>No está permitido compartir información de contacto</strong> (email, teléfono, WhatsApp).
+            </p>
+            <form onSubmit={handleSubmitQuestion}>
+              <div className="form-group">
+                <textarea
+                  value={newQuestion}
+                  onChange={(e) => setNewQuestion(e.target.value)}
+                  placeholder="Escribe tu pregunta aquí..."
+                  rows="4"
+                  maxLength="1000"
+                  disabled={loadingQuestions}
+                />
+                <small className="char-count">
+                  {newQuestion.length}/1000 caracteres
+                </small>
+              </div>
+              {questionError && (
+                <div className="error-message" style={{ color: '#d32f2f', marginBottom: '10px', fontSize: '14px' }}>
+                  {questionError}
+                </div>
+              )}
+              <button 
+                type="submit" 
+                className="btn btn-primary"
+                disabled={loadingQuestions || !newQuestion.trim()}
+              >
+                {loadingQuestions ? 'Enviando...' : 'Enviar Pregunta'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Lista de preguntas y respuestas */}
+        <div className="questions-list">
+          {questions.length === 0 ? (
+            <div className="empty-questions">
+              <i className="fas fa-question-circle" style={{ fontSize: '48px', color: '#ccc', marginBottom: '10px' }}></i>
+              <p>Aún no hay consultas sobre este lote</p>
+              <p className="hint-text">Sé el primero en hacer una pregunta</p>
+            </div>
+          ) : (
+            questions.map((question) => (
+              <div key={question.id} className="question-item">
+                <div className="question-header">
+                  <div className="question-author">
+                    <i className="fas fa-user-circle"></i>
+                    <span className="author-name">{question.buyer_name}</span>
+                  </div>
+                  <span className="question-date">
+                    {format(new Date(question.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
+                  </span>
+                </div>
+                <div className="question-text">
+                  <strong>Pregunta:</strong> {question.question_text}
+                </div>
+                
+                {/* Respuestas */}
+                {question.answers && question.answers.length > 0 && (
+                  <div className="answers-list">
+                    {question.answers.map((answer) => (
+                      <div key={answer.id} className="answer-item">
+                        <div className="answer-header">
+                          <div className="answer-author">
+                            <i className="fas fa-store"></i>
+                            <span className="author-name">{answer.seller_name} <span className="vendor-badge">Vendedor</span></span>
+                          </div>
+                          <span className="answer-date">
+                            {format(new Date(answer.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
+                          </span>
+                        </div>
+                        <div className="answer-text">
+                          <strong>Respuesta:</strong> {answer.answer_text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {question.answers.length === 0 && (
+                  <div className="no-answer">
+                    <i className="fas fa-clock"></i> Esperando respuesta del vendedor
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
 
       {/* Video (si existe) */}
       {lote.video_url && (
