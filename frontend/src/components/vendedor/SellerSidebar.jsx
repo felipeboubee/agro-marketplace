@@ -6,18 +6,40 @@ import {
   LogOut,
   Settings,
   Menu,
-  X
+  X,
+  RefreshCw
 } from "lucide-react";
 import { useState } from "react";
+import { api } from "../../services/api";
 
 export default function SellerSidebar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
+  };
+
+  const handleSwitchToBuyer = async () => {
+    setSwitching(true);
+    try {
+      const response = await api.post('/auth/switch-account', {
+        user_type: 'comprador'
+      });
+      
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      navigate('/comprador');
+    } catch (error) {
+      console.error('Error al cambiar de cuenta:', error);
+      // Si falla, redirigir al login
+      handleLogout();
+    } finally {
+      setSwitching(false);
+    }
   };
 
   const navItems = [
@@ -62,6 +84,15 @@ export default function SellerSidebar() {
         </nav>
 
         <div className="sidebar-footer">
+          <button 
+            onClick={handleSwitchToBuyer} 
+            className="switch-account-btn"
+            disabled={switching}
+          >
+            <RefreshCw size={20} />
+            <span>{switching ? 'Cambiando...' : 'Cambiar a Comprador'}</span>
+          </button>
+          
           <button onClick={handleLogout} className="logout-btn">
             <LogOut size={20} />
             <span>Cerrar Sesión</span>

@@ -10,6 +10,8 @@ const Login = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [tempCredentials, setTempCredentials] = useState(null);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -19,14 +21,66 @@ const Login = () => {
     });
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError('');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
-  try {
-    const response = await api.post('/auth/login', formData);
+    try {
+      // Intentar login primero como comprador
+      const compradorResponse = await api.post('/auth/login', {
+        ...formData,
+        user_type: 'comprador'
+      });
 
+      // Verificar si también existe como vendedor
+      try {
+        await api.post('/auth/login', {
+          ...formData,
+          user_type: 'vendedor'
+        });
+        
+        // Si ambos existen, mostrar selector
+        setTempCredentials({
+          comprador: compradorResponse,
+          email: formData.email,
+          password: formData.password
+        });
+        setShowRoleSelector(true);
+        setLoading(false);
+        return;
+      } catch (vendedorErr) {
+        // Solo existe como comprador, login directo
+        loginWithResponse(compradorResponse);
+      }
+    } catch (compradorErr) {
+      // No existe como comprador, intentar como otros roles
+      try {
+        const response = await api.post('/auth/login', formData);
+        loginWithResponse(response);
+      } catch (err) {
+        setError(err.message || 'Credenciales inválidas');
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleRoleSelection = async (role) => {
+    setLoading(true);
+    try {
+      const response = await api.post('/auth/login', {
+        email: tempCredentials.email,
+        password: tempCredentials.password,
+        user_type: role
+      });
+      loginWithResponse(response);
+    } catch (err) {
+      setError(err.message || 'Error al iniciar sesión');
+      setLoading(false);
+    }
+  };
+
+  const loginWithResponse = (response) => {
     localStorage.setItem('token', response.token);
     localStorage.setItem('user', JSON.stringify(response.user));
 
@@ -48,12 +102,53 @@ const handleSubmit = async (e) => {
       default:
         navigate('/');
     }
-  } catch (err) {
-    setError(err.message || 'Error al iniciar sesión');
-  } finally {
-    setLoading(false);
+  };
+
+  if (showRoleSelector) {
+    return (
+      <div className="auth-container-centered">
+        <div className="role-selector-card">
+          <div className="auth-header">
+            <h2>¿Qué quieres hacer?</h2>
+            <p>Selecciona cómo deseas ingresar</p>
+          </div>
+
+          <div className="role-selector">
+            <button
+              className="role-option"
+              onClick={() => handleRoleSelection('comprador')}
+              disabled={loading}
+            >
+              <div className="role-icon">🛒</div>
+              <h3>Comprar</h3>
+              <p>Buscar y adquirir ganado</p>
+            </button>
+
+            <button
+              className="role-option"
+              onClick={() => handleRoleSelection('vendedor')}
+              disabled={loading}
+            >
+              <div className="role-icon">💰</div>
+              <h3>Vender</h3>
+              <p>Publicar tus lotes</p>
+            </button>
+          </div>
+
+          <button 
+            className="btn btn-secondary btn-block"
+            onClick={() => {
+              setShowRoleSelector(false);
+              setTempCredentials(null);
+            }}
+            style={{ marginTop: '20px' }}
+          >
+            Volver
+          </button>
+        </div>
+      </div>
+    );
   }
-};
 
   return (
     <div className="auth-container">

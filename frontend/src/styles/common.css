@@ -200,6 +200,33 @@ body {
   font-size: inherit;
 }
 
+.switch-account-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  background: #eff6ff;
+  color: #2196f3;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.switch-account-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.switch-account-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .auth-links {
   display: flex;
   gap: var(--spacing-md);

@@ -27,6 +27,11 @@ router.post('/login', [
 // @access  Private
 router.post('/change-password', auth, authController.changePassword);
 
+// @route   POST /api/auth/switch-account
+// @desc    Switch between buyer and seller accounts
+// @access  Private
+router.post('/switch-account', auth, authController.switchAccount);
+
 // @route   PUT /api/users/profile
 // @desc    Update user profile
 // @access  Private

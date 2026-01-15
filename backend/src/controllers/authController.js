@@ -5,12 +5,12 @@ const User = require('../models/User');
 const authController = {
   async register(req, res) {
     try {
-      const { email, password, name, user_type, phone, location, bank_name } = req.body;
+      const { email, password, name, user_type, phone, location, bank_name, dni, cuit_cuil } = req.body;
 
-      // Verificar si el usuario ya existe
-      const existingUser = await User.findByEmail(email);
+      // Verificar si el usuario ya existe con ese email Y tipo
+      const existingUser = await User.findByEmailAndType(email, user_type);
       if (existingUser) {
-        return res.status(400).json({ error: 'El usuario ya existe' });
+        return res.status(400).json({ error: `Ya existe un usuario ${user_type} con este email` });
       }
 
       // Validar que si es banco, tenga bank_name
@@ -29,7 +29,9 @@ const authController = {
         user_type,
         phone,
         location,
-        bank_name: user_type === 'banco' ? bank_name : null
+        bank_name: user_type === 'banco' ? bank_name : null,
+        dni,
+        cuit_cuil
       });
 
       // Generar token
@@ -58,10 +60,16 @@ const authController = {
 
   async login(req, res) {
     try {
-      const { email, password } = req.body;
+      const { email, password, user_type } = req.body;
 
-      // Buscar usuario
-      const user = await User.findByEmail(email);
+      // Si se especifica user_type, buscar por email y tipo
+      let user;
+      if (user_type) {
+        user = await User.findByEmailAndType(email, user_type);
+      } else {
+        user = await User.findByEmail(email);
+      }
+
       if (!user) {
         return res.status(401).json({ error: 'Credenciales inválidas' });
       }
@@ -164,6 +172,47 @@ const authController = {
       });
     } catch (error) {
       console.error('Error al actualizar perfil:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  },
+
+  async switchAccount(req, res) {
+    try {
+      const userId = req.userId;
+      const { user_type } = req.body;
+
+      // Buscar usuario actual
+      const currentUser = await User.findById(userId);
+      if (!currentUser) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
+      }
+
+      // Buscar el otro tipo de usuario con el mismo email
+      const otherUser = await User.findByEmailAndType(currentUser.email, user_type);
+      if (!otherUser) {
+        return res.status(404).json({ error: `No existe una cuenta de tipo ${user_type} con este email` });
+      }
+
+      // Generar nuevo token para el otro usuario
+      const token = jwt.sign(
+        { userId: otherUser.id, userType: otherUser.user_type },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
+      );
+
+      res.json({
+        message: 'Cuenta cambiada exitosamente',
+        user: {
+          id: otherUser.id,
+          email: otherUser.email,
+          name: otherUser.name,
+          user_type: otherUser.user_type,
+          bank_name: otherUser.bank_name
+        },
+        token
+      });
+    } catch (error) {
+      console.error('Error al cambiar de cuenta:', error);
       res.status(500).json({ error: 'Error interno del servidor' });
     }
   }
