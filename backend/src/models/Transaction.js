@@ -10,16 +10,19 @@ const Transaction = {
       lote_id,
       agreed_price_per_kg,
       estimated_weight,
-      estimated_total
+      estimated_total,
+      quantity,
+      animal_type
     } = offerData;
 
     const query = `
       INSERT INTO transactions (
         offer_id, buyer_id, seller_id, lote_id,
+        price, quantity, animal_type,
         agreed_price_per_kg, estimated_weight, estimated_total,
         status
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending_weight')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending_weight')
       RETURNING *
     `;
 
@@ -28,6 +31,9 @@ const Transaction = {
       buyer_id,
       seller_id,
       lote_id,
+      agreed_price_per_kg, // price column (same as agreed_price_per_kg for now)
+      quantity,
+      animal_type,
       agreed_price_per_kg,
       estimated_weight,
       estimated_total

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ShoppingBag, Package, DollarSign, Calendar, MessageCircle, CheckCircle, Clock, AlertCircle, Truck } from 'lucide-react';
+import { ShoppingBag, Package, DollarSign, Eye, CheckCircle, Clock, AlertCircle, Truck } from 'lucide-react';
 import '../../styles/dashboard.css';
 
 export default function MyPurchases() {
@@ -13,7 +13,7 @@ export default function MyPurchases() {
   const fetchTransactions = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await api.get('/transactions/my', {
+      const response = await api.get('/transactions/buyer', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -142,10 +142,7 @@ export default function MyPurchases() {
                     </strong>
                   </td>
                   <td>
-                    <div className="date-info">
-                      <Calendar size={16} />
-                      <span>{format(new Date(transaction.created_at), 'dd/MM/yyyy', { locale: es })}</span>
-                    </div>
+                    <span>{format(new Date(transaction.created_at), 'dd/MM/yyyy', { locale: es })}</span>
                   </td>
                   <td>
                     {getStatusBadge(transaction.status)}
@@ -154,10 +151,11 @@ export default function MyPurchases() {
                     <div className="action-buttons">
                       <Link 
                         to={`/comprador/lote/${transaction.lote_id}`}
-                        className="btn btn-sm btn-outline"
+                        className="btn btn-sm btn-success"
                         title="Ver detalles del lote"
                       >
-                        Ver Lote
+                        <Eye size={16} />
+                        <span className="btn-text">Ver Lote</span>
                       </Link>
                       {transaction.status === 'weight_confirmed' && (
                         <Link
@@ -178,21 +176,53 @@ export default function MyPurchases() {
       )}
 
       {transactions.length > 0 && (
-        <div className="summary-card">
-          <h3>Resumen</h3>
-          <div className="summary-grid">
-            <div className="summary-item">
-              <span className="summary-label">Total de compras:</span>
-              <span className="summary-value">{transactions.length}</span>
+        <div className="stats-grid" style={{ marginTop: '24px' }}>
+          <div className="stat-card stat-primary">
+            <div className="stat-header">
+              <ShoppingBag size={24} />
+              <span className="stat-title">Total de Compras</span>
             </div>
-            <div className="summary-item">
-              <span className="summary-label">Monto total:</span>
-              <span className="summary-value">
+            <div className="stat-content">
+              <h3 className="stat-value">{transactions.length}</h3>
+            </div>
+          </div>
+          
+          <div className="stat-card stat-warning">
+            <div className="stat-header">
+              <Clock size={24} />
+              <span className="stat-title">En Proceso</span>
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">
+                {transactions.filter(t => !['completed', 'completo'].includes(t.status)).length}
+              </h3>
+            </div>
+          </div>
+          
+          <div className="stat-card stat-success">
+            <div className="stat-header">
+              <CheckCircle size={24} />
+              <span className="stat-title">Completadas</span>
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">
+                {transactions.filter(t => ['completed', 'completo'].includes(t.status)).length}
+              </h3>
+            </div>
+          </div>
+          
+          <div className="stat-card stat-green">
+            <div className="stat-header">
+              <DollarSign size={24} />
+              <span className="stat-title">Monto Total</span>
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">
                 ${transactions.reduce((sum, t) => sum + calculateTotal(t), 0).toLocaleString('es-AR', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2
                 })}
-              </span>
+              </h3>
             </div>
           </div>
         </div>

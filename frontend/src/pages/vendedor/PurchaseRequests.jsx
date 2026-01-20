@@ -215,13 +215,7 @@ export default function PurchaseRequests() {
                       <tr key={offer.id} className={offer.status !== 'pendiente' ? 'row-muted' : ''}>
                         <td>
                           <div className="buyer-info">
-                            <User size={16} />
-                            <div>
-                              <strong>{offer.buyer_name}</strong>
-                              {offer.buyer_email && (
-                                <small className="text-muted">{offer.buyer_email}</small>
-                              )}
-                            </div>
+                            <strong>{offer.buyer_name}</strong>
                           </div>
                         </td>
                         <td>
@@ -237,12 +231,22 @@ export default function PurchaseRequests() {
                           </div>
                         </td>
                         <td>
-                          <strong className="total-price">
-                            ${calculateTotal(offer).toLocaleString('es-AR', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            })}
-                          </strong>
+                          <div>
+                            <strong className="total-price">
+                              ${calculateTotal(offer).toLocaleString('es-AR', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                            </strong>
+                            {offer.original_price && (
+                              <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                                Base: ${(parseFloat(offer.original_price) * parseFloat(offer.total_count) * parseFloat(offer.average_weight)).toLocaleString('es-AR', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td>
                           <span className="payment-term">
@@ -268,12 +272,9 @@ export default function PurchaseRequests() {
                           )}
                         </td>
                         <td>
-                          <div className="date-info">
-                            <Calendar size={16} />
-                            <span>
-                              {format(new Date(offer.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
-                            </span>
-                          </div>
+                          <span>
+                            {format(new Date(offer.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
+                          </span>
                         </td>
                         <td>
                           {getStatusBadge(offer.status)}
@@ -285,10 +286,9 @@ export default function PurchaseRequests() {
                                 onClick={() => handleNegotiate(offer)}
                                 className="btn btn-sm btn-warning"
                                 title="Negociar precio"
-                                style={{ marginRight: '8px' }}
                               >
                                 <DollarSign size={16} />
-                                Negociar
+                                <span className="btn-text">Negociar</span>
                               </button>
                               <button
                                 onClick={() => handleUpdateStatus(offer.id, 'aceptada')}
@@ -296,7 +296,7 @@ export default function PurchaseRequests() {
                                 title="Aceptar oferta"
                               >
                                 <Check size={16} />
-                                Aceptar
+                                <span className="btn-text">Aceptar</span>
                               </button>
                               <button
                                 onClick={() => handleUpdateStatus(offer.id, 'rechazada')}
@@ -304,7 +304,7 @@ export default function PurchaseRequests() {
                                 title="Rechazar oferta"
                               >
                                 <X size={16} />
-                                Rechazar
+                                <span className="btn-text">Rechazar</span>
                               </button>
                             </div>
                           ) : (
@@ -322,30 +322,44 @@ export default function PurchaseRequests() {
       )}
 
       {requests.length > 0 && (
-        <div className="summary-card">
-          <h3>Resumen General</h3>
-          <div className="summary-grid">
-            <div className="summary-item">
-              <span className="summary-label">Total de ofertas:</span>
-              <span className="summary-value">{requests.length}</span>
+        <div className="stats-grid" style={{ marginTop: '24px' }}>
+          <div className="stat-card stat-info">
+            <div className="stat-header">
+              <Package size={24} />
+              <span className="stat-title">Total de Ofertas</span>
             </div>
-            <div className="summary-item">
-              <span className="summary-label">Pendientes:</span>
-              <span className="summary-value">
-                {requests.filter(r => r.status === 'pendiente').length}
-              </span>
+            <div className="stat-content">
+              <h3 className="stat-value">{requests.length}</h3>
             </div>
-            <div className="summary-item">
-              <span className="summary-label">Aceptadas:</span>
-              <span className="summary-value">
-                {requests.filter(r => r.status === 'aceptada').length}
-              </span>
+          </div>
+          
+          <div className="stat-card stat-warning">
+            <div className="stat-header">
+              <Clock size={24} />
+              <span className="stat-title">Ofertas Pendientes</span>
             </div>
-            <div className="summary-item">
-              <span className="summary-label">Rechazadas:</span>
-              <span className="summary-value">
-                {requests.filter(r => r.status === 'rechazada').length}
-              </span>
+            <div className="stat-content">
+              <h3 className="stat-value">{requests.filter(r => r.status === 'pendiente').length}</h3>
+            </div>
+          </div>
+          
+          <div className="stat-card stat-success">
+            <div className="stat-header">
+              <Check size={24} />
+              <span className="stat-title">Ofertas Aceptadas</span>
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">{requests.filter(r => r.status === 'aceptada').length}</h3>
+            </div>
+          </div>
+
+          <div className="stat-card stat-danger">
+            <div className="stat-header">
+              <X size={24} />
+              <span className="stat-title">Ofertas Rechazadas</span>
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">{requests.filter(r => r.status === 'rechazada').length}</h3>
             </div>
           </div>
         </div>

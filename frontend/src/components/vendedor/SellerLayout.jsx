@@ -23,7 +23,7 @@ export default function SellerLayout() {
             <Route path="/mis-lotes" element={<MyLotes />} />
             <Route path="/lote/:id" element={<LoteDetail />} />
             <Route path="/solicitudes" element={<PurchaseRequests />} />
-            <Route path="/transacciones" element={<MyTransactions />} />
+            <Route path="/ventas" element={<MyTransactions />} />
             <Route path="/actualizar-peso/:id" element={<ActualizarPeso />} />
             <Route path="/configuracion" element={<SellerSettings />} />
             <Route path="*" element={<NotFound />} />

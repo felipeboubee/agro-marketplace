@@ -347,9 +347,13 @@
 }
 
 .btn-text {
-  background: none;
-  color: var(--primary-color);
-  padding: 8px 12px;
+  display: none;
+  margin-left: 6px;
+}
+
+.btn:hover .btn-text,
+.btn-sm:hover .btn-text {
+  display: inline;
 }
 
 .btn-icon {

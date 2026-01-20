@@ -120,6 +120,11 @@ const LoteDetail = () => {
       return;
     }
     
+    if (lote.has_active_transaction) {
+      alert('Este lote ya tiene una transacción en curso y no está disponible');
+      return;
+    }
+    
     setModalStep(1);
     setOfferPrice(lote.base_price * 0.9);
     setPaymentTerm('contado');
@@ -340,13 +345,13 @@ const LoteDetail = () => {
           </button>
           {user?.user_type === 'comprador' && lote.status === 'ofertado' && (
             <button 
-              onClick={hasOffer ? null : handleMakeOffer} 
-              className={`btn ${hasOffer ? 'btn-secondary' : 'btn-primary'}`}
-              disabled={hasOffer}
-              style={{ cursor: hasOffer ? 'not-allowed' : 'pointer' }}
+              onClick={hasOffer || lote.has_active_transaction ? null : handleMakeOffer} 
+              className={`btn ${hasOffer || lote.has_active_transaction ? 'btn-secondary' : 'btn-primary'}`}
+              disabled={hasOffer || lote.has_active_transaction}
+              style={{ cursor: hasOffer || lote.has_active_transaction ? 'not-allowed' : 'pointer' }}
             >
-              <i className={`fas fa-${hasOffer ? 'clock' : 'handshake'}`}></i> 
-              {hasOffer ? ' Oferta Pendiente' : ' Hacer Oferta'}
+              <i className={`fas fa-${hasOffer ? 'clock' : lote.has_active_transaction ? 'ban' : 'handshake'}`}></i> 
+              {hasOffer ? ' Oferta Pendiente' : lote.has_active_transaction ? ' No Disponible' : ' Hacer Oferta'}
             </button>
           )}
         </div>
@@ -642,13 +647,13 @@ const LoteDetail = () => {
             <div className="quick-actions">
               {user?.user_type === 'comprador' && lote.status === 'ofertado' && (
                 <button 
-                  onClick={hasOffer ? null : handleMakeOffer} 
-                  className={`btn ${hasOffer ? 'btn-secondary' : 'btn-primary'} btn-block`}
-                  disabled={hasOffer}
-                  style={{ cursor: hasOffer ? 'not-allowed' : 'pointer', opacity: hasOffer ? 0.7 : 1 }}
+                  onClick={hasOffer || lote.has_active_transaction ? null : handleMakeOffer} 
+                  className={`btn ${hasOffer || lote.has_active_transaction ? 'btn-secondary' : 'btn-primary'} btn-block`}
+                  disabled={hasOffer || lote.has_active_transaction}
+                  style={{ cursor: hasOffer || lote.has_active_transaction ? 'not-allowed' : 'pointer', opacity: hasOffer || lote.has_active_transaction ? 0.7 : 1 }}
                 >
-                  <i className={`fas fa-${hasOffer ? 'clock' : 'handshake'}`}></i> 
-                  {hasOffer ? ' Oferta Pendiente' : ' Hacer Oferta'}
+                  <i className={`fas fa-${hasOffer ? 'clock' : lote.has_active_transaction ? 'ban' : 'handshake'}`}></i> 
+                  {hasOffer ? ' Oferta Pendiente' : lote.has_active_transaction ? ' No Disponible' : ' Hacer Oferta'}
                 </button>
               )}
               

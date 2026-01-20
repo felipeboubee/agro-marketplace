@@ -44,6 +44,10 @@ const loteController = {
 
   async getAllLotes(req, res) {
     try {
+      // Use Lote.getAll() which filters out lotes with active transactions
+      let lotes = await Lote.getAll();
+
+      // Apply additional filters from query params
       const { 
         location, 
         animal_type, 
@@ -55,46 +59,42 @@ const loteController = {
         order = 'DESC'
       } = req.query;
 
-      let query = 'SELECT * FROM lotes WHERE status = $1';
-      let params = ['ofertado'];
-      let paramCount = 2;
-
-      // Aplicar filtros
       if (location) {
-        query += ` AND location ILIKE $${paramCount}`;
-        params.push(`%${location}%`);
-        paramCount++;
+        lotes = lotes.filter(l => l.location.toLowerCase().includes(location.toLowerCase()));
       }
 
       if (animal_type) {
-        query += ` AND animal_type = $${paramCount}`;
-        params.push(animal_type);
-        paramCount++;
+        lotes = lotes.filter(l => l.animal_type === animal_type);
       }
 
       if (min_price) {
-        query += ` AND base_price >= $${paramCount}`;
-        params.push(min_price);
-        paramCount++;
+        lotes = lotes.filter(l => l.base_price >= parseFloat(min_price));
       }
 
       if (max_price) {
-        query += ` AND base_price <= $${paramCount}`;
-        params.push(max_price);
-        paramCount++;
+        lotes = lotes.filter(l => l.base_price <= parseFloat(max_price));
       }
 
-      // Ordenar
+      if (min_weight) {
+        lotes = lotes.filter(l => l.average_weight >= parseFloat(min_weight));
+      }
+
+      if (max_weight) {
+        lotes = lotes.filter(l => l.average_weight <= parseFloat(max_weight));
+      }
+
+      // Sort results
       const validSortColumns = ['created_at', 'base_price', 'total_count', 'average_weight'];
       const sortColumn = validSortColumns.includes(sort_by) ? sort_by : 'created_at';
       const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
       
-      query += ` ORDER BY ${sortColumn} ${sortOrder}`;
-
-      const pool = require('../config/database');
-      const { rows } = await pool.query(query, params);
+      lotes.sort((a, b) => {
+        const aVal = a[sortColumn];
+        const bVal = b[sortColumn];
+        return sortOrder === 'ASC' ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
+      });
       
-      res.json(rows);
+      res.json(lotes);
     } catch (error) {
       console.error('Error fetching lotes:', error);
       res.status(500).json({ error: 'Error al obtener los lotes' });
@@ -109,6 +109,10 @@ const loteController = {
       if (!lote) {
         return res.status(404).json({ error: 'Lote no encontrado' });
       }
+      
+      // Check if lote has active transaction
+      const hasActiveTransaction = await Lote.hasActiveTransaction(id);
+      lote.has_active_transaction = hasActiveTransaction;
       
       res.json(lote);
     } catch (error) {

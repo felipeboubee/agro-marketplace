@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { TrendingUp, DollarSign, Calendar, Scale, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { TrendingUp, DollarSign, Calendar, Scale, CheckCircle, Clock, AlertCircle, Eye } from 'lucide-react';
 import '../../styles/dashboard.css';
 
 export default function MyTransactions() {
@@ -13,7 +13,7 @@ export default function MyTransactions() {
   const fetchTransactions = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await api.get('/transactions/my', {
+      const response = await api.get('/transactions/seller', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -118,40 +118,39 @@ export default function MyTransactions() {
                     </div>
                   </td>
                   <td>
-                    <div className="price-info">
-                      <DollarSign size={16} />
-                      <span>${parseFloat(transaction.agreed_price_per_kg || 0).toFixed(2)}/kg</span>
-                    </div>
+                    <span>${parseFloat(transaction.agreed_price_per_kg || 0).toFixed(2)}/kg</span>
                   </td>
                   <td>
                     <div className="weight-info">
                       {transaction.actual_weight ? (
                         <div>
                           <strong>{parseFloat(transaction.actual_weight).toFixed(2)} kg</strong>
-                          <small className="text-muted"> (real)</small>
+                          <br />
+                          <small className="text-muted">(real)</small>
                         </div>
                       ) : (
                         <div>
                           <span>{parseFloat(transaction.estimated_weight || 0).toFixed(2)} kg</span>
-                          <small className="text-muted"> (estimado)</small>
+                          <br />
+                          <small className="text-muted">(estimado)</small>
                         </div>
                       )}
                     </div>
                   </td>
                   <td>
-                    <strong className="total-price">
-                      ${calculateTotal(transaction).toLocaleString('es-AR', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })}
-                    </strong>
-                    <small className="text-muted"> (después de comisiones)</small>
+                    <div>
+                      <strong className="total-price">
+                        ${calculateTotal(transaction).toLocaleString('es-AR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </strong>
+                      <br />
+                      <small className="text-muted">(después de comisiones)</small>
+                    </div>
                   </td>
                   <td>
-                    <div className="date-info">
-                      <Calendar size={16} />
-                      <span>{format(new Date(transaction.created_at), 'dd/MM/yyyy', { locale: es })}</span>
-                    </div>
+                    <span>{format(new Date(transaction.created_at), 'dd/MM/yyyy', { locale: es })}</span>
                   </td>
                   <td>
                     {getStatusBadge(transaction.status)}
@@ -164,15 +163,17 @@ export default function MyTransactions() {
                           className="btn btn-sm btn-primary"
                           title="Actualizar peso real"
                         >
-                          <Scale size={16} /> Actualizar Peso
+                          <Scale size={16} />
+                          <span className="btn-text">Actualizar Peso</span>
                         </Link>
                       )}
                       <Link 
                         to={`/vendedor/lote/${transaction.lote_id}`}
-                        className="btn btn-sm btn-outline"
+                        className="btn btn-sm btn-success"
                         title="Ver detalles del lote"
                       >
-                        Ver Lote
+                        <Eye size={16} />
+                        <span className="btn-text">Ver Lote</span>
                       </Link>
                     </div>
                   </td>
@@ -184,34 +185,60 @@ export default function MyTransactions() {
       )}
 
       {transactions.length > 0 && (
-        <div className="summary-card">
-          <h3>Resumen</h3>
-          <div className="summary-grid">
-            <div className="summary-item">
-              <span className="summary-label">Total de ventas:</span>
-              <span className="summary-value">{transactions.length}</span>
+        <div className="stats-grid" style={{ marginTop: '24px' }}>
+          <div className="stat-card stat-primary">
+            <div className="stat-header">
+              <TrendingUp size={24} />
+              <span className="stat-title">Total de Ventas</span>
             </div>
-            <div className="summary-item">
-              <span className="summary-label">Pendientes de peso:</span>
-              <span className="summary-value">
+            <div className="stat-content">
+              <h3 className="stat-value">{transactions.length}</h3>
+            </div>
+          </div>
+          
+          <div className="stat-card stat-warning">
+            <div className="stat-header">
+              <Clock size={24} />
+              <span className="stat-title">Pendientes de Peso</span>
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">
                 {transactions.filter(t => t.status === 'pending_weight').length}
-              </span>
+              </h3>
             </div>
-            <div className="summary-item">
-              <span className="summary-label">En proceso de pago:</span>
-              <span className="summary-value">
+          </div>
+          
+          <div className="stat-card stat-info">
+            <div className="stat-header">
+              <AlertCircle size={24} />
+              <span className="stat-title">En Proceso de Pago</span>
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">
                 {transactions.filter(t => ['weight_confirmed', 'payment_pending', 'payment_processing'].includes(t.status)).length}
-              </span>
+              </h3>
             </div>
-            <div className="summary-item">
-              <span className="summary-label">Completadas:</span>
-              <span className="summary-value">
+          </div>
+          
+          <div className="stat-card stat-success">
+            <div className="stat-header">
+              <CheckCircle size={24} />
+              <span className="stat-title">Completadas</span>
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">
                 {transactions.filter(t => t.status === 'completed').length}
-              </span>
+              </h3>
             </div>
-            <div className="summary-item">
-              <span className="summary-label">Ingresos totales netos:</span>
-              <span className="summary-value">
+          </div>
+          
+          <div className="stat-card stat-green">
+            <div className="stat-header">
+              <DollarSign size={24} />
+              <span className="stat-title">Ingresos Totales Netos</span>
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">
                 ${transactions
                   .filter(t => t.status === 'completed')
                   .reduce((sum, t) => sum + calculateTotal(t), 0)
@@ -219,7 +246,7 @@ export default function MyTransactions() {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                   })}
-              </span>
+              </h3>
             </div>
           </div>
         </div>

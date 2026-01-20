@@ -8,7 +8,8 @@ import {
   Menu,
   X,
   RefreshCw,
-  Clock
+  Clock,
+  TrendingUp
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../services/api";
@@ -48,6 +49,7 @@ export default function SellerSidebar() {
     { path: "/vendedor/crear", icon: <Plus size={20} />, label: "Crear Lote" },
     { path: "/vendedor/mis-lotes", icon: <List size={20} />, label: "Mis Lotes" },
     { path: "/vendedor/solicitudes", icon: <Clock size={20} />, label: "Solicitudes de Compra" },
+    { path: "/vendedor/ventas", icon: <TrendingUp size={20} />, label: "Mis Ventas" },
     { path: "/vendedor/configuracion", icon: <Settings size={20} />, label: "Configuración" },
   ];
 

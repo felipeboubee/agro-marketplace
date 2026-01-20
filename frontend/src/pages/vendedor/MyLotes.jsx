@@ -10,7 +10,11 @@ import {
   Trash2,
   Calendar,
   MapPin,
-  DollarSign
+  DollarSign,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Truck
 } from "lucide-react";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -55,23 +59,6 @@ export default function MyLotes() {
     }
   });
 
-  const handleStatusChange = async (loteId, newStatus) => {
-    if (!window.confirm(`¿Cambiar estado a "${newStatus}"?`)) return;
-
-    try {
-      await api.updateLote(loteId, { status: newStatus });
-      
-      setLotes(lotes.map(lote => 
-        lote.id === loteId ? { ...lote, status: newStatus } : lote
-      ));
-      
-      alert('Estado actualizado exitosamente');
-    } catch (error) {
-      console.error('Error updating lote status:', error);
-      alert('Error al actualizar el estado');
-    }
-  };
-
   const handleDelete = async (loteId) => {
     if (!window.confirm('¿Estás seguro de eliminar este lote? Esta acción no se puede deshacer.')) return;
 
@@ -85,13 +72,35 @@ export default function MyLotes() {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (lote) => {
+    // If there's an active transaction, show transaction status
+    if (lote.transaction_status) {
+      const badges = {
+        'pending_weight': { label: 'Esperando Peso', class: 'badge-warning', icon: Clock },
+        'pendiente': { label: 'Esperando Peso', class: 'badge-warning', icon: Clock },
+        'weight_confirmed': { label: 'Peso Confirmado', class: 'badge-info', icon: AlertCircle },
+        'payment_pending': { label: 'Pago Pendiente', class: 'badge-warning', icon: DollarSign },
+        'payment_processing': { label: 'Procesando Pago', class: 'badge-info', icon: Clock },
+        'completed': { label: 'Completo', class: 'badge-success', icon: CheckCircle },
+        'completo': { label: 'Completo', class: 'badge-success', icon: CheckCircle }
+      };
+      const badge = badges[lote.transaction_status] || { label: lote.transaction_status, class: 'badge-default', icon: AlertCircle };
+      const Icon = badge.icon;
+      return (
+        <span className={`status-badge ${badge.class}`}>
+          <Icon size={16} />
+          {badge.label}
+        </span>
+      );
+    }
+    
+    // Otherwise show lote status
     const badges = {
-      'ofertado': { label: 'Ofertado', class: 'badge-warning' },
+      'ofertado': { label: 'Disponible', class: 'badge-success' },
       'completo': { label: 'Completo', class: 'badge-success' },
       'cancelado': { label: 'Cancelado', class: 'badge-danger' }
     };
-    const badge = badges[status] || { label: status, class: 'badge-default' };
+    const badge = badges[lote.status] || { label: lote.status, class: 'badge-default' };
     return <span className={`status-badge ${badge.class}`}>{badge.label}</span>;
   };
 
@@ -258,6 +267,7 @@ export default function MyLotes() {
                   <th>Peso Prom.</th>
                   <th>Precio Base</th>
                   <th>Estado</th>
+                  <th>Comprador</th>
                   <th>Fecha</th>
                   <th>Acciones</th>
                 </tr>
@@ -289,9 +299,14 @@ export default function MyLotes() {
                         {lote.base_price}/kg
                       </div>
                     </td>
-                    <td>{getStatusBadge(lote.status)}</td>
-                    <td>
-                      <div className="cell-with-icon">
+                    <td>{getStatusBadge(lote)}</td>
+                    <td>                      {lote.buyer_name ? (
+                        <span className="text-muted">{lote.buyer_name}</span>
+                      ) : (
+                        <span className="text-muted">-</span>
+                      )}
+                    </td>
+                    <td>                      <div className="cell-with-icon">
                         <Calendar size={16} />
                         {format(new Date(lote.created_at), "dd/MM/yyyy", { locale: es })}
                       </div>
@@ -305,16 +320,6 @@ export default function MyLotes() {
                         >
                           <Eye size={16} />
                         </Link>
-                        <select 
-                          value={lote.status}
-                          onChange={(e) => handleStatusChange(lote.id, e.target.value)}
-                          className="status-select-mini"
-                          title="Cambiar estado"
-                        >
-                          <option value="ofertado">Ofertado</option>
-                          <option value="completo">Completo</option>
-                          <option value="cancelado">Cancelado</option>
-                        </select>
                         <button 
                           onClick={() => handleDelete(lote.id)}
                           className="btn btn-sm btn-danger"

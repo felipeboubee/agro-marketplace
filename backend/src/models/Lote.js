@@ -46,7 +46,19 @@ const Lote = {
   },
 
   async findBySeller(seller_id) {
-    const query = 'SELECT * FROM lotes WHERE seller_id = $1 ORDER BY created_at DESC';
+    const query = `
+      SELECT l.*, 
+        t.id as transaction_id,
+        t.status as transaction_status,
+        t.buyer_id,
+        u.name as buyer_name
+      FROM lotes l
+      LEFT JOIN transactions t ON l.id = t.lote_id 
+        AND t.status NOT IN ('completo', 'cancelado', 'completed')
+      LEFT JOIN users u ON t.buyer_id = u.id
+      WHERE l.seller_id = $1 
+      ORDER BY l.created_at DESC
+    `;
     const { rows } = await pool.query(query, [seller_id]);
     return rows;
   },
@@ -83,11 +95,24 @@ const Lote = {
       SELECT l.*, u.name as seller_name, u.email as seller_email
       FROM lotes l
       JOIN users u ON l.seller_id = u.id
-      WHERE l.status = 'ofertado'
+      LEFT JOIN transactions t ON l.id = t.lote_id 
+        AND t.status NOT IN ('completo', 'cancelado')
+      WHERE l.status = 'ofertado' AND t.id IS NULL
       ORDER BY l.created_at DESC
     `;
     const { rows } = await pool.query(query);
     return rows;
+  },
+
+  async hasActiveTransaction(lote_id) {
+    const query = `
+      SELECT COUNT(*) as count
+      FROM transactions
+      WHERE lote_id = $1 
+        AND status NOT IN ('completo', 'cancelado')
+    `;
+    const { rows } = await pool.query(query, [lote_id]);
+    return parseInt(rows[0].count) > 0;
   }
 };
 

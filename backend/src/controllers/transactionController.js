@@ -316,7 +316,7 @@ const transactionController = {
 
   async getSellerTransactions(req, res) {
     try {
-      const transactions = await Transaction.findBySeller(req.userId);
+      const transactions = await Transaction.findBySellerId(req.userId);
       res.json(transactions);
     } catch (error) {
       console.error('Error fetching seller transactions:', error);

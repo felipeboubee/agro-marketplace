@@ -166,7 +166,9 @@ exports.updateOfferStatus = async (req, res) => {
         lote_id: offer.lote_id,
         agreed_price_per_kg: offer.offered_price,
         estimated_weight: estimatedWeight,
-        estimated_total: estimatedTotal
+        estimated_total: estimatedTotal,
+        quantity: lote.total_count,
+        animal_type: lote.animal_type
       });
     }
 
@@ -176,7 +178,9 @@ exports.updateOfferStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating offer status:', error);
-    res.status(500).json({ error: 'Error al actualizar el estado de la oferta' });
+    console.error('Error stack:', error.stack);
+    console.error('Error message:', error.message);
+    res.status(500).json({ error: 'Error al actualizar el estado de la oferta', details: error.message });
   }
 };
 

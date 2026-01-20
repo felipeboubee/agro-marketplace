@@ -175,7 +175,7 @@ export default function PurchaseRequests() {
                       </div>
                     ) : (
                       <div>
-                        <div className="price-cell">${parseFloat(request.offered_price).toFixed(2)}/kg</div>
+                        <div className="price-cell" style={{ color: '#2196f3', fontWeight: 'bold' }}>${parseFloat(request.offered_price).toFixed(2)}/kg</div>
                         {request.original_price && (
                           <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
                             Base: ${parseFloat(request.original_price).toFixed(2)}/kg
