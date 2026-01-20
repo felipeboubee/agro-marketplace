@@ -1,11 +1,13 @@
 const Offer = require('../models/Offer');
 const Lote = require('../models/Lote');
+const Certification = require('../models/Certification');
+const Transaction = require('../models/Transaction');
 
-// Create a new offer
+// Create a new offer with payment details
 exports.createOffer = async (req, res) => {
   try {
     const { loteId } = req.params;
-    const { offered_price, original_price } = req.body;
+    const { offered_price, original_price, payment_term, payment_method } = req.body;
     const buyerId = req.userId;
     const userType = req.userType;
 
@@ -15,8 +17,13 @@ exports.createOffer = async (req, res) => {
     }
 
     // Validate input
-    if (!offered_price || !original_price) {
-      return res.status(400).json({ error: 'Precio ofrecido y precio original son requeridos' });
+    if (!offered_price || !original_price || !payment_term || !payment_method) {
+      return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    }
+
+    // Validate payment method based on payment term
+    if (payment_term !== 'contado' && payment_method !== 'cheque') {
+      return res.status(400).json({ error: 'Solo se acepta cheque para plazos diferentes a contado' });
     }
 
     // Check if lote exists
@@ -30,13 +37,20 @@ exports.createOffer = async (req, res) => {
       return res.status(400).json({ error: 'Este lote no está disponible para ofertas' });
     }
 
+    // Check buyer certification status
+    const certifications = await Certification.findByUser(buyerId);
+    const hasCertification = certifications.some(cert => cert.status === 'aprobado');
+
     // Create the offer
     const offer = await Offer.create(
       buyerId,
       lote.seller_id,
       loteId,
       parseFloat(offered_price),
-      parseFloat(original_price)
+      parseFloat(original_price),
+      payment_term,
+      payment_method,
+      hasCertification
     );
 
     res.status(201).json({
@@ -45,7 +59,12 @@ exports.createOffer = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating offer:', error);
-    res.status(500).json({ error: 'Error al crear la oferta' });
+    console.error('Error details:', error.message);
+    console.error('Stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Error al crear la oferta',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -101,7 +120,7 @@ exports.getLoteOffers = async (req, res) => {
   }
 };
 
-// Update offer status (seller only)
+// Update offer status with negotiation support (seller only)
 exports.updateOfferStatus = async (req, res) => {
   try {
     const { offerId } = req.params;
@@ -134,6 +153,23 @@ exports.updateOfferStatus = async (req, res) => {
     // Update the offer
     const updatedOffer = await Offer.updateStatus(offerId, status);
 
+    // If accepted, create transaction automatically
+    if (status === 'aceptada') {
+      const lote = await Lote.findById(offer.lote_id);
+      const estimatedWeight = parseFloat(lote.total_count) * parseFloat(lote.average_weight);
+      const estimatedTotal = parseFloat(offer.offered_price) * estimatedWeight;
+
+      await Transaction.create({
+        offer_id: offer.id,
+        buyer_id: offer.buyer_id,
+        seller_id: offer.seller_id,
+        lote_id: offer.lote_id,
+        agreed_price_per_kg: offer.offered_price,
+        estimated_weight: estimatedWeight,
+        estimated_total: estimatedTotal
+      });
+    }
+
     res.json({
       message: `Oferta ${status} exitosamente`,
       offer: updatedOffer
@@ -141,6 +177,119 @@ exports.updateOfferStatus = async (req, res) => {
   } catch (error) {
     console.error('Error updating offer status:', error);
     res.status(500).json({ error: 'Error al actualizar el estado de la oferta' });
+  }
+};
+
+// Create counter offer (seller negotiates price)
+exports.createCounterOffer = async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { counter_price } = req.body;
+    const userId = req.userId;
+    const userType = req.userType;
+
+    // Verify user is a seller
+    if (userType !== 'vendedor') {
+      return res.status(403).json({ error: 'Solo los vendedores pueden hacer contraofertas' });
+    }
+
+    // Validate input
+    if (!counter_price || counter_price <= 0) {
+      return res.status(400).json({ error: 'Precio de contraoferta inválido' });
+    }
+
+    // Get the original offer
+    const offer = await Offer.findById(offerId);
+    if (!offer) {
+      return res.status(404).json({ error: 'Oferta no encontrada' });
+    }
+
+    // Verify seller owns the lote
+    if (offer.seller_id !== userId) {
+      return res.status(403).json({ error: 'No tienes permiso para negociar esta oferta' });
+    }
+
+    // Verify offer is pending
+    if (offer.status !== 'pendiente') {
+      return res.status(400).json({ error: 'Solo se pueden negociar ofertas pendientes' });
+    }
+
+    // Create counter offer
+    const counterOffer = await Offer.createCounterOffer(offerId, parseFloat(counter_price));
+
+    res.status(201).json({
+      message: 'Contraoferta creada exitosamente',
+      counterOffer
+    });
+  } catch (error) {
+    console.error('Error creating counter offer:', error);
+    res.status(500).json({ error: 'Error al crear la contraoferta' });
+  }
+};
+
+// Buyer responds to counter offer
+exports.respondToCounterOffer = async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { accept } = req.body; // true or false
+    const userId = req.userId;
+    const userType = req.userType;
+
+    // Verify user is a buyer
+    if (userType !== 'comprador') {
+      return res.status(403).json({ error: 'Solo los compradores pueden responder a contraofertas' });
+    }
+
+    // Get the counter offer
+    const counterOffer = await Offer.findById(offerId);
+    if (!counterOffer) {
+      return res.status(404).json({ error: 'Contraoferta no encontrada' });
+    }
+
+    // Verify it's a counter offer
+    if (!counterOffer.is_counter_offer) {
+      return res.status(400).json({ error: 'Esta no es una contraoferta' });
+    }
+
+    // Verify buyer owns this offer
+    if (counterOffer.buyer_id !== userId) {
+      return res.status(403).json({ error: 'No tienes permiso para responder a esta contraoferta' });
+    }
+
+    if (accept) {
+      // Accept counter offer
+      const updatedOffer = await Offer.updateStatus(offerId, 'aceptada');
+
+      // Create transaction
+      const lote = await Lote.findById(counterOffer.lote_id);
+      const estimatedWeight = parseFloat(lote.total_count) * parseFloat(lote.average_weight);
+      const estimatedTotal = parseFloat(counterOffer.offered_price) * estimatedWeight;
+
+      await Transaction.create({
+        offer_id: counterOffer.id,
+        buyer_id: counterOffer.buyer_id,
+        seller_id: counterOffer.seller_id,
+        lote_id: counterOffer.lote_id,
+        agreed_price_per_kg: counterOffer.offered_price,
+        estimated_weight: estimatedWeight,
+        estimated_total: estimatedTotal
+      });
+
+      res.json({
+        message: 'Contraoferta aceptada exitosamente',
+        offer: updatedOffer
+      });
+    } else {
+      // Reject counter offer
+      const updatedOffer = await Offer.updateStatus(offerId, 'rechazada');
+      res.json({
+        message: 'Contraoferta rechazada',
+        offer: updatedOffer
+      });
+    }
+  } catch (error) {
+    console.error('Error responding to counter offer:', error);
+    res.status(500).json({ error: 'Error al responder a la contraoferta' });
   }
 };
 

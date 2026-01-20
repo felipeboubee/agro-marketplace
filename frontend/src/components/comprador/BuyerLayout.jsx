@@ -8,6 +8,7 @@ import CertificationForm from "../../pages/comprador/CertificationForm";
 import BuyerSettings from "../../pages/comprador/BuyerSettings";
 import MyPurchases from "../../pages/comprador/MyPurchases";
 import PurchaseRequests from "../../pages/comprador/PurchaseRequests";
+import ConfirmarPeso from "../../pages/comprador/ConfirmarPeso";
 import NotFound from "../../pages/NotFound";
 import "../../styles/admin.css";
 
@@ -23,6 +24,7 @@ export default function BuyerLayout() {
             <Route path="/lote/:id" element={<LoteDetail />} />
             <Route path="/mis-compras" element={<MyPurchases />} />
             <Route path="/solicitudes" element={<PurchaseRequests />} />
+            <Route path="/confirmar-peso/:id" element={<ConfirmarPeso />} />
             <Route path="/certificaciones" element={<MyCertifications />} />
             <Route path="/certificacion" element={<CertificationForm />} />
             <Route path="/configuracion" element={<BuyerSettings />} />

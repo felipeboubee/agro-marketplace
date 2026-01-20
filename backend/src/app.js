@@ -11,6 +11,8 @@ const adminRoutes = require('./routes/adminRoutes');
 const questionRoutes = require('./routes/questionRoutes');
 const offerRoutes = require('./routes/offerRoutes');
 const favoriteRoutes = require('./routes/favoriteRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const paymentOrderRoutes = require('./routes/paymentOrderRoutes');
 const initAdminTables = require('../scripts/initAdminTables');
 const requestLogger = require('./middleware/requestLogger');
 
@@ -40,6 +42,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/offers', offerRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/payment-orders', paymentOrderRoutes);
 app.use(requestLogger);
 
 // Ruta de prueba

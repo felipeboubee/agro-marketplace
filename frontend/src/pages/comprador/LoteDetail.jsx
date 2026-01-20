@@ -15,6 +15,10 @@ const LoteDetail = () => {
   const [offerPrice, setOfferPrice] = useState('');
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [paymentTerm, setPaymentTerm] = useState('contado');
+  const [customTerm, setCustomTerm] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('transferencia');
+  const [modalStep, setModalStep] = useState(1);
   const [purchaseData, setPurchaseData] = useState({
     payment_method: 'contado',
     quantity: '',
@@ -116,7 +120,11 @@ const LoteDetail = () => {
       return;
     }
     
-    setOfferPrice(lote.base_price);
+    setModalStep(1);
+    setOfferPrice(lote.base_price * 0.9);
+    setPaymentTerm('contado');
+    setCustomTerm('');
+    setPaymentMethod('transferencia');
     setShowOfferModal(true);
   };
 
@@ -141,10 +149,26 @@ const LoteDetail = () => {
 
   const submitOffer = async () => {
     try {
+      // Validar que si no es contado, solo se puede pagar con cheque
+      if (paymentTerm !== 'contado' && paymentMethod !== 'cheque') {
+        alert('Solo se acepta cheque para plazos diferentes a contado');
+        return;
+      }
+      
+      // Validar que contado no puede ser con cheque
+      if (paymentTerm === 'contado' && paymentMethod === 'cheque') {
+        alert('No se acepta cheque para pago al contado');
+        return;
+      }
+
+      const finalPaymentTerm = paymentTerm === 'custom' ? customTerm : paymentTerm;
+      
       const token = localStorage.getItem('token');
       await api.post(`/offers/${id}`, {
         offered_price: parseFloat(offerPrice),
-        original_price: lote.base_price
+        original_price: lote.base_price,
+        payment_term: finalPaymentTerm,
+        payment_method: paymentMethod
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -152,6 +176,10 @@ const LoteDetail = () => {
       setHasOffer(true);
       alert('Oferta enviada exitosamente');
       setShowOfferModal(false);
+      setModalStep(1);
+      setPaymentTerm('contado');
+      setPaymentMethod('transferencia');
+      setCustomTerm('');
     } catch (error) {
       console.error('Error submitting offer:', error);
       alert('Error al enviar la oferta');
@@ -490,7 +518,7 @@ const LoteDetail = () => {
             </h3>
             <div className="summary-grid">
               <div className="summary-item">
-                <div className="summary-icon">🐄</div>
+                <span className="summary-icon">🐄</span>
                 <div className="summary-content">
                   <span className="summary-label">Cantidad Total</span>
                   <span className="summary-value">
@@ -505,7 +533,7 @@ const LoteDetail = () => {
               </div>
 
               <div className="summary-item">
-                <div className="summary-icon">⚖️</div>
+                <span className="summary-icon">⚖️</span>
                 <div className="summary-content">
                   <span className="summary-label">Peso Total</span>
                   <span className="summary-value">
@@ -521,14 +549,14 @@ const LoteDetail = () => {
               </div>
 
               <div className="summary-item">
-                <div className="summary-icon">💰</div>
+                <span className="summary-icon">💰</span>
                 <div className="summary-content">
                   <span className="summary-label">Valor Estimado</span>
                   <span className="summary-value">
                     ${calculateTotalValue().toLocaleString('es-AR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
                   </span>
                   <span className="summary-subtext">
                     ${lote.base_price} por kg
@@ -537,7 +565,7 @@ const LoteDetail = () => {
               </div>
 
               <div className="summary-item">
-                <div className="summary-icon">🌱</div>
+                <span className="summary-icon">🌾</span>
                 <div className="summary-content">
                   <span className="summary-label">Tipo de Engorde</span>
                   <span className="summary-value">{lote.feeding_type}</span>
@@ -613,20 +641,15 @@ const LoteDetail = () => {
             </h3>
             <div className="quick-actions">
               {user?.user_type === 'comprador' && lote.status === 'ofertado' && (
-                <>
-                  <button onClick={handlePurchase} className="btn btn-primary btn-block">
-                    <i className="fas fa-shopping-cart"></i> Comprar Ahora
-                  </button>
-                  <button 
-                    onClick={hasOffer ? null : handleMakeOffer} 
-                    className={`btn ${hasOffer ? 'btn-secondary' : 'btn-outline'} btn-block`}
-                    disabled={hasOffer}
-                    style={{ cursor: hasOffer ? 'not-allowed' : 'pointer', opacity: hasOffer ? 0.7 : 1 }}
-                  >
-                    <i className={`fas fa-${hasOffer ? 'clock' : 'handshake'}`}></i> 
-                    {hasOffer ? ' Oferta Pendiente' : ' Hacer Oferta'}
-                  </button>
-                </>
+                <button 
+                  onClick={hasOffer ? null : handleMakeOffer} 
+                  className={`btn ${hasOffer ? 'btn-secondary' : 'btn-primary'} btn-block`}
+                  disabled={hasOffer}
+                  style={{ cursor: hasOffer ? 'not-allowed' : 'pointer', opacity: hasOffer ? 0.7 : 1 }}
+                >
+                  <i className={`fas fa-${hasOffer ? 'clock' : 'handshake'}`}></i> 
+                  {hasOffer ? ' Oferta Pendiente' : ' Hacer Oferta'}
+                </button>
               )}
               
               {user?.user_type === 'vendedor' && user?.id === lote.seller_id && (
@@ -831,78 +854,169 @@ const LoteDetail = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3>Hacer Oferta</h3>
+              <h3>Hacer Oferta {modalStep === 2 && '- Medio de Pago'}</h3>
               <button 
                 className="modal-close"
-                onClick={() => setShowOfferModal(false)}
+                onClick={() => {
+                  setShowOfferModal(false);
+                  setModalStep(1);
+                }}
               >
                 &times;
               </button>
             </div>
             <div className="modal-body">
-              <div className="offer-summary">
-                <h4>Resumen del Lote</h4>
-                <p>{lote.animal_type} - {lote.breed}</p>
-                <p>{lote.total_count} animales • {lote.average_weight} kg promedio</p>
-                <p className="price-info">
-                  Precio base: <strong>${lote.base_price}/kg</strong>
-                </p>
-              </div>
+              {modalStep === 1 && (
+                <>
+                  <div className="offer-summary">
+                    <h4>Resumen del Lote</h4>
+                    <p>{lote.animal_type} - {lote.breed}</p>
+                    <p>{lote.total_count} animales • {lote.average_weight} kg promedio</p>
+                    <p className="price-info">
+                      Precio base: <strong>${lote.base_price}/kg</strong>
+                    </p>
+                  </div>
 
-              <div className="form-group">
-                <label>Tu Oferta (por kg)</label>
-                <div className="price-input-wrapper">
-                  <span className="price-prefix">$</span>
-                  <input
-                    type="number"
-                    value={offerPrice}
-                    onChange={(e) => setOfferPrice(e.target.value)}
-                    min={lote.base_price * 0.5}
-                    max={lote.base_price * 1.5}
-                    step="0.01"
-                  />
-                  <span className="price-suffix">/kg</span>
-                </div>
-                <small>
-                  Rango sugerido: ${(lote.base_price * 0.8).toFixed(2)} - ${(lote.base_price * 1.2).toFixed(2)}
-                </small>
-              </div>
+                  <div className="form-group">
+                    <label>Tu Oferta (por kg)</label>
+                    <div className="price-input-wrapper">
+                      <span className="price-prefix">$</span>
+                      <input
+                        type="number"
+                        value={offerPrice}
+                        onChange={(e) => setOfferPrice(e.target.value)}
+                        min={lote.base_price * 0.5}
+                        max={lote.base_price * 1.5}
+                        step="0.01"
+                      />
+                      <span className="price-suffix">/kg</span>
+                    </div>
+                    <small>
+                      Rango sugerido: ${(lote.base_price * 0.8).toFixed(2)} - ${(lote.base_price * 1.2).toFixed(2)}
+                    </small>
+                  </div>
 
-              <div className="offer-calculations">
-                <div className="calculation-row">
-                  <span>Valor total de tu oferta:</span>
-                  <span className="calculation-value">
-                    ${(offerPrice * lote.total_count * lote.average_weight).toLocaleString('es-AR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}
-                  </span>
-                </div>
-                <div className="calculation-row">
-                  <span>Diferencia con precio base:</span>
-                  <span className={`calculation-value ${offerPrice < lote.base_price ? 'negative' : 'positive'}`}>
-                    {offerPrice < lote.base_price ? '-' : '+'}$
-                    {Math.abs((offerPrice - lote.base_price) * lote.total_count * lote.average_weight).toLocaleString('es-AR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}
-                  </span>
-                </div>
-              </div>
+                  <div className="form-group">
+                    <label>Plazo de Pago</label>
+                    <select
+                      value={paymentTerm}
+                      onChange={(e) => setPaymentTerm(e.target.value)}
+                      className="form-control"
+                    >
+                      <option value="contado">Contado</option>
+                      <option value="30">30 días</option>
+                      <option value="30-60">30-60 días</option>
+                      <option value="custom">Otro (especificar)</option>
+                    </select>
+                  </div>
+
+                  {paymentTerm === 'custom' && (
+                    <div className="form-group">
+                      <label>Especificar Plazo</label>
+                      <input
+                        type="text"
+                        value={customTerm}
+                        onChange={(e) => setCustomTerm(e.target.value)}
+                        className="form-control"
+                        placeholder="Ej: 45 días, 60-90 días"
+                      />
+                    </div>
+                  )}
+
+                  <div className="offer-calculations">
+                    <div className="calculation-row">
+                      <span>Valor total de tu oferta:</span>
+                      <span className="calculation-value">
+                        ${(offerPrice * lote.total_count * lote.average_weight).toLocaleString('es-AR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </span>
+                    </div>
+                    <div className="calculation-row">
+                      <span>Diferencia con precio base:</span>
+                      <span className={`calculation-value ${offerPrice < lote.base_price ? 'negative' : 'positive'}`}>
+                        {offerPrice < lote.base_price ? '-' : '+'}$
+                        {Math.abs((offerPrice - lote.base_price) * lote.total_count * lote.average_weight).toLocaleString('es-AR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {modalStep === 2 && (
+                <>
+                  <div className="offer-summary">
+                    <h4>Resumen de tu Oferta</h4>
+                    <p><strong>Precio:</strong> ${offerPrice}/kg</p>
+                    <p><strong>Plazo:</strong> {paymentTerm === 'custom' ? customTerm : paymentTerm === 'contado' ? 'Contado' : paymentTerm + ' días'}</p>
+                    <p><strong>Total:</strong> ${(offerPrice * lote.total_count * lote.average_weight).toLocaleString('es-AR')}</p>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Medio de Pago</label>
+                    <select
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="form-control"
+                    >
+                      {paymentTerm === 'contado' ? (
+                        <>
+                          <option value="transferencia">Transferencia Bancaria</option>
+                          <option value="tarjeta">Tarjeta de Crédito</option>
+                          <option value="cheque">Cheque</option>
+                        </>
+                      ) : (
+                        <option value="cheque">Cheque</option>
+                      )}
+                    </select>
+                    {paymentTerm !== 'contado' && (
+                      <small className="text-muted">
+                        Para plazos diferentes a contado solo se acepta cheque
+                      </small>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
             <div className="modal-footer">
+              {modalStep === 2 && (
+                <button 
+                  onClick={() => setModalStep(1)}
+                  className="btn btn-outline"
+                >
+                  <i className="fas fa-arrow-left"></i> Volver
+                </button>
+              )}
               <button 
-                onClick={() => setShowOfferModal(false)}
+                onClick={() => {
+                  setShowOfferModal(false);
+                  setModalStep(1);
+                }}
                 className="btn btn-outline"
               >
                 Cancelar
               </button>
-              <button 
-                onClick={submitOffer}
-                className="btn btn-primary"
-              >
-                <i className="fas fa-paper-plane"></i> Enviar Oferta
-              </button>
+              {modalStep === 1 && (
+                <button 
+                  onClick={() => setModalStep(2)}
+                  className="btn btn-primary"
+                  disabled={!offerPrice || (paymentTerm === 'custom' && !customTerm)}
+                >
+                  Continuar <i className="fas fa-arrow-right"></i>
+                </button>
+              )}
+              {modalStep === 2 && (
+                <button 
+                  onClick={submitOffer}
+                  className="btn btn-primary"
+                >
+                  <i className="fas fa-paper-plane"></i> Enviar Oferta
+                </button>
+              )}
             </div>
           </div>
         </div>

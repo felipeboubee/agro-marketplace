@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Clock, Package, DollarSign, Calendar, X, AlertCircle } from 'lucide-react';
+import { Clock, Package, DollarSign, Calendar, X, AlertCircle, Eye, Check, Trash2 } from 'lucide-react';
 import '../../styles/dashboard.css';
 
 export default function PurchaseRequests() {
@@ -21,9 +21,10 @@ export default function PurchaseRequests() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      // Filter pending and rejected offers
+      // Filter pending, rejected, and counter-offered offers
+      // Also fetch counter offers where buyer is the recipient
       const filteredRequests = response.filter(
-        offer => offer.status === 'pendiente' || offer.status === 'rechazada'
+        offer => ['pendiente', 'rechazada', 'counter_offered'].includes(offer.status) || offer.is_counter_offer
       );
       setRequests(filteredRequests);
       setLoading(false);
@@ -53,14 +54,45 @@ export default function PurchaseRequests() {
     }
   };
 
+  const handleRespondToCounter = async (offerId, accept) => {
+    const action = accept ? 'aceptar' : 'rechazar';
+    if (!window.confirm(`¿Estás seguro de que deseas ${action} esta contraoferta?`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      await api.post(`/offers/${offerId}/respond`, 
+        { accept },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      alert(accept ? 'Contraoferta aceptada. Se ha creado la transacción.' : 'Contraoferta rechazada');
+      fetchRequests(); // Refresh list
+    } catch (error) {
+      console.error('Error responding to counter offer:', error);
+      alert(error.response?.data?.error || 'Error al responder a la contraoferta');
+    }
+  };
+
   const calculateTotal = (offer) => {
     return parseFloat(offer.offered_price) * parseFloat(offer.total_count) * parseFloat(offer.average_weight);
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, isCounterOffer) => {
+    if (isCounterOffer) {
+      return (
+        <span className="status-badge badge-info">
+          <AlertCircle size={16} />
+          Contraoferta Recibida
+        </span>
+      );
+    }
+    
     const badges = {
       'pendiente': { label: 'Pendiente', class: 'badge-warning', icon: Clock },
-      'rechazada': { label: 'Rechazada', class: 'badge-danger', icon: X }
+      'rechazada': { label: 'Rechazada', class: 'badge-danger', icon: X },
+      'counter_offered': { label: 'Contraoferta Enviada', class: 'badge-info', icon: AlertCircle }
     };
     const badge = badges[status] || { label: status, class: 'badge-default', icon: AlertCircle };
     const Icon = badge.icon;
@@ -108,12 +140,12 @@ export default function PurchaseRequests() {
               <tr>
                 <th>Lote</th>
                 <th>Vendedor</th>
-                <th>Cantidad</th>
-                <th>Precio Ofrecido</th>
-                <th>Total</th>
-                <th>Fecha Oferta</th>
-                <th>Estado</th>
-                <th>Acciones</th>
+                <th className="text-center">Cantidad</th>
+                <th className="text-center">Precio Ofrecido</th>
+                <th className="text-center">Total</th>
+                <th className="text-center">Fecha</th>
+                <th className="text-center">Estado</th>
+                <th className="text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -125,62 +157,98 @@ export default function PurchaseRequests() {
                       <span className="text-muted">{request.breed}</span>
                     </div>
                   </td>
-                  <td>
-                    <div className="seller-info">
-                      <span>{request.seller_name || 'N/A'}</span>
-                    </div>
+                  <td>{request.seller_name || 'N/A'}</td>
+                  <td className="text-center number-cell">{request.total_count}</td>
+                  <td className="text-center">
+                    {request.is_counter_offer ? (
+                      <div>
+                        <div className="counter-offer-badge" style={{ marginBottom: '6px' }}>
+                          <AlertCircle size={14} style={{ color: '#0066cc' }} />
+                          <span style={{ color: '#0066cc', fontSize: '13px', fontWeight: '600' }}>Contraoferta</span>
+                        </div>
+                        <div style={{ textDecoration: 'line-through', color: '#999', fontSize: '13px' }}>
+                          ${parseFloat(request.counter_offer_price || 0).toFixed(2)}/kg
+                        </div>
+                        <div className="price-cell" style={{ color: '#0066cc', fontWeight: 'bold', marginTop: '4px' }}>
+                          ${parseFloat(request.offered_price).toFixed(2)}/kg
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="price-cell">${parseFloat(request.offered_price).toFixed(2)}/kg</div>
+                        {request.original_price && (
+                          <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                            Base: ${parseFloat(request.original_price).toFixed(2)}/kg
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </td>
-                  <td>
-                    <div className="quantity-info">
-                      <Package size={16} />
-                      <span>{request.total_count} animales</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="price-info">
-                      <DollarSign size={16} />
-                      <span>${parseFloat(request.offered_price).toFixed(2)}/kg</span>
-                      {request.original_price && (
-                        <small className="text-muted">
-                          (Original: ${parseFloat(request.original_price).toFixed(2)})
-                        </small>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <strong className="total-price">
+                  <td className="text-center">
+                    <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#333' }}>
                       ${calculateTotal(request).toLocaleString('es-AR', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                       })}
-                    </strong>
-                  </td>
-                  <td>
-                    <div className="date-info">
-                      <Calendar size={16} />
-                      <span>{format(new Date(request.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}</span>
                     </div>
+                    {request.is_counter_offer && request.counter_offer_price && (
+                      <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                        Original: ${(parseFloat(request.counter_offer_price) * parseFloat(request.total_count) * parseFloat(request.average_weight)).toLocaleString('es-AR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </div>
+                    )}
+                    {!request.is_counter_offer && request.original_price && (
+                      <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                        Base: ${(parseFloat(request.original_price) * parseFloat(request.total_count) * parseFloat(request.average_weight)).toLocaleString('es-AR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </div>
+                    )}
+                  </td>
+                  <td className="text-center">
+                    {format(new Date(request.created_at), 'dd/MM/yyyy', { locale: es })}
                   </td>
                   <td>
-                    {getStatusBadge(request.status)}
+                    {getStatusBadge(request.status, request.is_counter_offer)}
                   </td>
-                  <td>
+                  <td className="text-center">
                     <div className="action-buttons">
                       <Link 
                         to={`/comprador/lote/${request.lote_id}`}
-                        className="btn btn-sm btn-outline"
+                        className="btn btn-sm btn-primary"
+                        title="Ver lote"
                       >
-                        Ver Lote
+                        <Eye size={16} />
                       </Link>
-                      {request.status === 'pendiente' && (
+                      {request.is_counter_offer && request.status === 'pendiente' ? (
+                        <>
+                          <button
+                            onClick={() => handleRespondToCounter(request.id, true)}
+                            className="btn btn-sm btn-success"
+                            title="Aceptar contraoferta"
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleRespondToCounter(request.id, false)}
+                            className="btn btn-sm btn-danger"
+                            title="Rechazar contraoferta"
+                          >
+                            <X size={16} />
+                          </button>
+                        </>
+                      ) : request.status === 'pendiente' && !request.is_counter_offer ? (
                         <button
                           onClick={() => handleCancelOffer(request.id)}
                           className="btn btn-sm btn-danger"
                           title="Cancelar oferta"
                         >
-                          Cancelar
+                          <Trash2 size={16} />
                         </button>
-                      )}
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -191,24 +259,34 @@ export default function PurchaseRequests() {
       )}
 
       {requests.length > 0 && (
-        <div className="summary-card">
-          <h3>Resumen</h3>
-          <div className="summary-grid">
-            <div className="summary-item">
-              <span className="summary-label">Ofertas pendientes:</span>
-              <span className="summary-value">
-                {requests.filter(r => r.status === 'pendiente').length}
-              </span>
+        <div className="stats-grid" style={{ marginTop: '24px' }}>
+          <div className="stat-card stat-warning">
+            <div className="stat-header">
+              <Clock size={24} />
+              <span className="stat-title">Ofertas Pendientes</span>
             </div>
-            <div className="summary-item">
-              <span className="summary-label">Ofertas rechazadas:</span>
-              <span className="summary-value">
-                {requests.filter(r => r.status === 'rechazada').length}
-              </span>
+            <div className="stat-content">
+              <h3 className="stat-value">{requests.filter(r => r.status === 'pendiente').length}</h3>
             </div>
-            <div className="summary-item">
-              <span className="summary-label">Monto total en ofertas:</span>
-              <span className="summary-value">
+          </div>
+          
+          <div className="stat-card stat-danger">
+            <div className="stat-header">
+              <X size={24} />
+              <span className="stat-title">Ofertas Rechazadas</span>
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">{requests.filter(r => r.status === 'rechazada').length}</h3>
+            </div>
+          </div>
+          
+          <div className="stat-card stat-green">
+            <div className="stat-header">
+              <DollarSign size={24} />
+              <span className="stat-title">Monto Total en Ofertas</span>
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">
                 ${requests
                   .filter(r => r.status === 'pendiente')
                   .reduce((sum, r) => sum + calculateTotal(r), 0)
@@ -216,7 +294,7 @@ export default function PurchaseRequests() {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                   })}
-              </span>
+              </h3>
             </div>
           </div>
         </div>

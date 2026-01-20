@@ -10,6 +10,9 @@ export default function PurchaseRequests() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [groupedRequests, setGroupedRequests] = useState({});
+  const [showNegotiateModal, setShowNegotiateModal] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState(null);
+  const [counterPrice, setCounterPrice] = useState('');
 
   useEffect(() => {
     fetchRequests();
@@ -83,6 +86,36 @@ export default function PurchaseRequests() {
     } catch (error) {
       console.error('Error updating offer status:', error);
       alert('Error al actualizar el estado de la oferta');
+    }
+  };
+
+  const handleNegotiate = (offer) => {
+    setSelectedOffer(offer);
+    setCounterPrice(parseFloat(offer.offered_price) * 1.1); // Suggest 10% more
+    setShowNegotiateModal(true);
+  };
+
+  const submitCounterOffer = async () => {
+    if (!counterPrice || counterPrice <= 0) {
+      alert('Por favor ingresa un precio válido');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      await api.post(`/offers/${selectedOffer.id}/counter`, 
+        { counter_price: parseFloat(counterPrice) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      alert('Contraoferta enviada exitosamente');
+      setShowNegotiateModal(false);
+      setSelectedOffer(null);
+      setCounterPrice('');
+      fetchRequests();
+    } catch (error) {
+      console.error('Error creating counter offer:', error);
+      alert(error.response?.data?.error || 'Error al crear la contraoferta');
     }
   };
 
@@ -169,6 +202,9 @@ export default function PurchaseRequests() {
                       <th>Comprador</th>
                       <th>Precio Ofrecido</th>
                       <th>Total</th>
+                      <th>Plazo</th>
+                      <th>Medio de Pago</th>
+                      <th>Certificación</th>
                       <th>Fecha</th>
                       <th>Estado</th>
                       <th>Acciones</th>
@@ -209,6 +245,29 @@ export default function PurchaseRequests() {
                           </strong>
                         </td>
                         <td>
+                          <span className="payment-term">
+                            {offer.payment_term === 'contado' ? 'Contado' : 
+                             offer.payment_term === '30' ? '30 días' :
+                             offer.payment_term === '30-60' ? '30-60 días' :
+                             offer.payment_term || '-'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="payment-method">
+                            {offer.payment_method === 'transferencia' ? 'Transferencia' :
+                             offer.payment_method === 'tarjeta' ? 'Tarjeta' :
+                             offer.payment_method === 'cheque' ? 'Cheque' :
+                             offer.payment_method || '-'}
+                          </span>
+                        </td>
+                        <td>
+                          {offer.has_buyer_certification ? (
+                            <span className="badge badge-success">Sí</span>
+                          ) : (
+                            <span className="badge badge-secondary">No</span>
+                          )}
+                        </td>
+                        <td>
                           <div className="date-info">
                             <Calendar size={16} />
                             <span>
@@ -222,6 +281,15 @@ export default function PurchaseRequests() {
                         <td>
                           {offer.status === 'pendiente' ? (
                             <div className="action-buttons">
+                              <button
+                                onClick={() => handleNegotiate(offer)}
+                                className="btn btn-sm btn-warning"
+                                title="Negociar precio"
+                                style={{ marginRight: '8px' }}
+                              >
+                                <DollarSign size={16} />
+                                Negociar
+                              </button>
                               <button
                                 onClick={() => handleUpdateStatus(offer.id, 'aceptada')}
                                 className="btn btn-sm btn-success"
@@ -282,6 +350,59 @@ export default function PurchaseRequests() {
           </div>
         </div>
       )}
+
+      {showNegotiateModal && selectedOffer && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Negociar Precio</h3>
+              <button className="modal-close" onClick={() => setShowNegotiateModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="offer-summary">
+                <h4>Oferta Original</h4>
+                <div className="offer-details">
+                  <p><strong>Comprador:</strong> {selectedOffer.buyer_name}</p>
+                  <p><strong>Precio ofrecido:</strong> ${parseFloat(selectedOffer.offered_price).toFixed(2)}/kg</p>
+                  <p><strong>Total estimado:</strong> ${calculateTotal(selectedOffer).toLocaleString('es-AR')}</p>
+                  <p><strong>Plazo:</strong> {selectedOffer.payment_term || '-'}</p>
+                  <p><strong>Medio de pago:</strong> {selectedOffer.payment_method || '-'}</p>
+                </div>
+              </div>
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label htmlFor="counterPrice">Tu Contraoferta (por kg)</label>
+                <div className="price-input-wrapper">
+                  <span className="price-prefix">$</span>
+                  <input
+                    id="counterPrice"
+                    type="number"
+                    value={counterPrice}
+                    onChange={(e) => setCounterPrice(e.target.value)}
+                    step="0.01"
+                    min="0"
+                    placeholder="Ingresa tu precio"
+                  />
+                  <span className="price-suffix">/kg</span>
+                </div>
+                {counterPrice && (
+                  <small className="text-muted" style={{ display: 'block', marginTop: '8px' }}>
+                    Nuevo total estimado: ${(parseFloat(counterPrice) * selectedOffer.lote_weight).toLocaleString('es-AR')}
+                  </small>
+                )}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button onClick={() => setShowNegotiateModal(false)} className="btn btn-outline">
+                Cancelar
+              </button>
+              <button onClick={submitCounterOffer} className="btn btn-primary">
+                Enviar Contraoferta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

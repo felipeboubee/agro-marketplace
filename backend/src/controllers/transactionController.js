@@ -1,50 +1,46 @@
 const Transaction = require('../models/Transaction');
-const User = require('../models/User');
+const Offer = require('../models/Offer');
+const PaymentOrder = require('../models/PaymentOrder');
+const Lote = require('../models/Lote');
 
 const transactionController = {
+  // Create transaction after offer is accepted
   async createTransaction(req, res) {
     try {
-      const {
-        lote_id,
-        seller_id,
-        price,
-        quantity,
-        animal_type,
-        payment_method,
-        location,
-        average_weight,
-        breed,
-        offer_price
-      } = req.body;
-
-      // Verificar que el vendedor exista
-      const seller = await User.findById(seller_id);
-      if (!seller || seller.user_type !== 'vendedor') {
-        return res.status(404).json({ error: 'Vendedor no encontrado' });
+      const { offer_id } = req.body;
+      
+      // Get offer details
+      const offer = await Offer.findById(offer_id);
+      if (!offer) {
+        return res.status(404).json({ error: 'Oferta no encontrada' });
       }
 
-      // Para compradores, usar el ID del usuario autenticado
-      const buyer_id = req.userId;
+      // Check if offer is accepted
+      if (offer.status !== 'aceptada') {
+        return res.status(400).json({ error: 'La oferta debe estar aceptada' });
+      }
 
-      // Crear transacción
-      const transactionData = {
-        seller_id,
-        buyer_id,
-        lote_id,
-        price: offer_price || price,
-        quantity,
-        animal_type,
-        status: 'pendiente',
-        payment_method,
-        location,
-        average_weight,
-        breed
-      };
+      // Check if transaction already exists
+      const existingTransaction = await Transaction.findByOfferId(offer_id);
+      if (existingTransaction) {
+        return res.status(400).json({ error: 'Ya existe una transacción para esta oferta' });
+      }
 
-      const transaction = await Transaction.create(transactionData);
+      // Get lote details to calculate estimated total
+      const lote = await Lote.findById(offer.lote_id);
+      const estimatedWeight = parseFloat(lote.total_count) * parseFloat(lote.average_weight);
+      const estimatedTotal = parseFloat(offer.offered_price) * estimatedWeight;
 
-      // Actualizar stock del lote (si existe en otra tabla)
-      // Esta lógica dependerá de tu estructura de base de datos
+      // Create transaction
+      const transaction = await Transaction.create({
+        offer_id: offer.id,
+        buyer_id: offer.buyer_id,
+        seller_id: offer.seller_id,
+        lote_id: offer.lote_id,
+        agreed_price_per_kg: offer.offered_price,
+        estimated_weight: estimatedWeight,
+        estimated_total: estimatedTotal
+      });
 
       res.status(201).json({
         message: 'Transacción creada exitosamente',
@@ -52,13 +48,160 @@ const transactionController = {
       });
     } catch (error) {
       console.error('Error creating transaction:', error);
-      res.status(500).json({ error: 'Error interno del servidor' });
+      res.status(500).json({ error: 'Error al crear la transacción' });
+    }
+  },
+
+  // Get transaction by ID
+  async getTransaction(req, res) {
+    try {
+      const { id } = req.params;
+      const transaction = await Transaction.findById(id);
+      
+      if (!transaction) {
+        return res.status(404).json({ error: 'Transacción no encontrada' });
+      }
+
+      // Verify user has access to this transaction
+      if (transaction.buyer_id !== req.userId && transaction.seller_id !== req.userId) {
+        return res.status(403).json({ error: 'No tienes acceso a esta transacción' });
+      }
+
+      res.json(transaction);
+    } catch (error) {
+      console.error('Error fetching transaction:', error);
+      res.status(500).json({ error: 'Error al obtener la transacción' });
+    }
+  },
+
+  // Get my transactions (buyer or seller)
+  async getMyTransactions(req, res) {
+    try {
+      const userId = req.userId;
+      const user = await require('../models/User').findById(userId);
+      const userType = user.user_type;
+
+      let transactions;
+      if (userType === 'comprador') {
+        transactions = await Transaction.findByBuyerId(userId);
+      } else if (userType === 'vendedor') {
+        transactions = await Transaction.findBySellerId(userId);
+      } else {
+        return res.status(403).json({ error: 'Tipo de usuario no válido' });
+      }
+
+      res.json(transactions);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      res.status(500).json({ error: 'Error al obtener las transacciones' });
+    }
+  },
+
+  // Update weight from balance (seller only)
+  async updateWeight(req, res) {
+    try {
+      const { id } = req.params;
+      const { actual_weight, balance_ticket_url } = req.body;
+
+      // Get transaction
+      const transaction = await Transaction.findById(id);
+      if (!transaction) {
+        return res.status(404).json({ error: 'Transacción no encontrada' });
+      }
+
+      // Verify seller owns this transaction
+      if (transaction.seller_id !== req.userId) {
+        return res.status(403).json({ error: 'Solo el vendedor puede actualizar el peso' });
+      }
+
+      // Verify transaction status
+      if (transaction.status !== 'pending_weight') {
+        return res.status(400).json({ error: 'El peso ya fue actualizado' });
+      }
+
+      // Validate input
+      if (!actual_weight || actual_weight <= 0) {
+        return res.status(400).json({ error: 'Peso inválido' });
+      }
+
+      // Update weight
+      const updatedTransaction = await Transaction.updateWeight(id, {
+        actual_weight,
+        balance_ticket_url
+      });
+
+      res.json(updatedTransaction);
+    } catch (error) {
+      console.error('Error updating weight:', error);
+      res.status(500).json({ error: 'Error al actualizar el peso' });
+    }
+  },
+
+  // Buyer confirms weight
+  async confirmWeight(req, res) {
+    try {
+      const { id } = req.params;
+
+      // Get transaction
+      const transaction = await Transaction.findById(id);
+      if (!transaction) {
+        return res.status(404).json({ error: 'Transacción no encontrada' });
+      }
+
+      // Verify buyer owns this transaction
+      if (transaction.buyer_id !== req.userId) {
+        return res.status(403).json({ error: 'Solo el comprador puede confirmar el peso' });
+      }
+
+      // Verify transaction status
+      if (transaction.status !== 'weight_confirmed') {
+        return res.status(400).json({ error: 'El peso aún no ha sido actualizado por el vendedor' });
+      }
+
+      // Confirm weight (this calculates commissions and creates payment order)
+      const confirmedTransaction = await Transaction.confirmWeight(id);
+
+      // Create payment order
+      const paymentOrder = await PaymentOrder.create({
+        transaction_id: confirmedTransaction.id,
+        buyer_id: confirmedTransaction.buyer_id,
+        seller_id: confirmedTransaction.seller_id,
+        amount: confirmedTransaction.final_amount,
+        payment_term: confirmedTransaction.payment_term,
+        payment_method: confirmedTransaction.payment_method,
+        platform_commission: confirmedTransaction.platform_commission,
+        bank_commission: confirmedTransaction.bank_commission,
+        seller_net_amount: confirmedTransaction.seller_net_amount
+      });
+
+      // Update transaction status to payment_processing
+      await Transaction.updateStatus(id, 'payment_processing');
+
+      res.json({
+        transaction: confirmedTransaction,
+        paymentOrder: paymentOrder
+      });
+    } catch (error) {
+      console.error('Error confirming weight:', error);
+      res.status(500).json({ error: 'Error al confirmar el peso' });
+    }
+  },
+
+  // Check if lote has active transaction
+  async checkLoteTransaction(req, res) {
+    try {
+      const { loteId } = req.params;
+      const hasTransaction = await Transaction.hasActiveTransaction(loteId);
+      res.json({ hasTransaction });
+    } catch (error) {
+      console.error('Error checking lote transaction:', error);
+      res.status(500).json({ error: 'Error al verificar transacción' });
     }
   },
 
   async getBuyerTransactions(req, res) {
     try {
-      const transactions = await Transaction.findByBuyer(req.userId);
+      const transactions = await Transaction.findByBuyerId(req.userId);
       res.json(transactions);
     } catch (error) {
       console.error('Error fetching buyer transactions:', error);
@@ -71,31 +214,34 @@ const transactionController = {
       const buyer_id = req.userId;
       const pool = require('../config/database');
 
+      console.log('getBuyerStats - buyer_id:', buyer_id, 'userType:', req.userType);
+
       // Total de compras
       const totalResult = await pool.query(
         'SELECT COUNT(*) as count FROM transactions WHERE buyer_id = $1',
         [buyer_id]
       );
+      console.log('getBuyerStats - totalResult:', totalResult.rows[0]);
 
       // Compras activas (pendiente o aprobado)
       const activeResult = await pool.query(
         `SELECT COUNT(*) as count FROM transactions 
-         WHERE buyer_id = $1 AND status IN ('pendiente', 'aprobado')`,
+         WHERE buyer_id = $1 AND status IN ('pendiente', 'aprobado', 'pending_weight', 'weight_confirmed', 'payment_pending')`,
         [buyer_id]
       );
 
       // Transacciones completadas
       const completedResult = await pool.query(
         `SELECT COUNT(*) as count FROM transactions 
-         WHERE buyer_id = $1 AND status = 'completo'`,
+         WHERE buyer_id = $1 AND status = 'completed'`,
         [buyer_id]
       );
 
       // Total gastado (suma de transacciones completadas)
       const spentResult = await pool.query(
-        `SELECT COALESCE(SUM(price * quantity), 0) as total 
+        `SELECT COALESCE(SUM(COALESCE(final_amount, estimated_total)), 0) as total 
          FROM transactions 
-         WHERE buyer_id = $1 AND status = 'completo'`,
+         WHERE buyer_id = $1 AND status = 'completed'`,
         [buyer_id]
       );
 
@@ -159,7 +305,12 @@ const transactionController = {
       res.json(result);
     } catch (error) {
       console.error('Error fetching buyer stats:', error);
-      res.status(500).json({ error: 'Error interno del servidor' });
+      console.error('Error stack:', error.stack);
+      console.error('Error details:', error.message);
+      res.status(500).json({ 
+        error: 'Error interno del servidor',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   },
 

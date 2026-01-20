@@ -18,6 +18,7 @@ import '../../styles/dashboard.css';
 export default function LoteList() {
   const [lotes, setLotes] = useState([]);
   const [favorites, setFavorites] = useState([]);
+  const [myOffers, setMyOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
@@ -59,9 +60,20 @@ export default function LoteList() {
     }
   };
 
+  const fetchMyOffers = async () => {
+    try {
+      const response = await api.getMyOffers();
+      setMyOffers(Array.isArray(response) ? response : []);
+    } catch (error) {
+      console.error('Error fetching my offers:', error);
+      setMyOffers([]);
+    }
+  };
+
   useEffect(() => {
     fetchLotes();
     fetchFavorites();
+    fetchMyOffers();
   }, []);
 
   const filteredLotes = (activeTab === 'all' ? lotes : favorites).filter(lote => {
@@ -106,6 +118,7 @@ export default function LoteList() {
     setLoading(true);
     fetchLotes();
     fetchFavorites();
+    fetchMyOffers();
   };
 
   const resetFilters = () => {
@@ -120,7 +133,17 @@ export default function LoteList() {
     });
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, loteId) => {
+    // Verificar si el comprador tiene una oferta pendiente en este lote
+    const hasOffer = myOffers.some(offer => 
+      offer.lote_id === loteId && 
+      (offer.status === 'pendiente' || offer.status === 'counter_offered')
+    );
+    
+    if (hasOffer) {
+      return <span className="status-badge badge-warning">Oferta Pendiente</span>;
+    }
+    
     const badges = {
       'ofertado': { label: 'Disponible', class: 'badge-success' },
       'completo': { label: 'Vendido', class: 'badge-default' },
@@ -424,7 +447,7 @@ export default function LoteList() {
                       {lote.uniformity === 'completamente_uniforme' && 'Completo'}
                       {!lote.uniformity && 'N/A'}
                     </td>
-                    <td>{getStatusBadge(lote.status)}</td>
+                    <td>{getStatusBadge(lote.status, lote.id)}</td>
                     <td>
                       <div className="cell-with-icon">
                         <Calendar size={16} />

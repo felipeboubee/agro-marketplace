@@ -12,6 +12,12 @@ router.get('/', auth, offerController.getMyOffers);
 // Get offers for a specific lote (seller only)
 router.get('/lote/:loteId', auth, offerController.getLoteOffers);
 
+// Create counter offer (seller negotiates price)
+router.post('/:offerId/counter', auth, offerController.createCounterOffer);
+
+// Buyer responds to counter offer
+router.post('/:offerId/respond', auth, offerController.respondToCounterOffer);
+
 // Update offer status (seller only)
 router.put('/:offerId/status', auth, offerController.updateOfferStatus);
 

@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ShoppingBag, Package, DollarSign, Calendar, MessageCircle, CheckCircle, Clock, AlertCircle, Truck } from 'lucide-react';
+import { TrendingUp, DollarSign, Calendar, Scale, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import '../../styles/dashboard.css';
 
-export default function MyPurchases() {
+export default function MyTransactions() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,13 +29,6 @@ export default function MyPurchases() {
     fetchTransactions();
   }, []);
 
-  const calculateTotal = (transaction) => {
-    if (transaction.final_amount) {
-      return parseFloat(transaction.final_amount);
-    }
-    return parseFloat(transaction.estimated_total) || 0;
-  };
-
   const getStatusBadge = (status) => {
     const badges = {
       'pending_weight': { label: 'Esperando Peso', class: 'badge-warning', icon: Clock },
@@ -55,11 +48,23 @@ export default function MyPurchases() {
     );
   };
 
+  const calculateTotal = (transaction) => {
+    if (transaction.seller_net_amount) {
+      return parseFloat(transaction.seller_net_amount);
+    }
+    if (transaction.final_amount) {
+      // Calculate net: final_amount - commissions
+      const finalAmount = parseFloat(transaction.final_amount);
+      return finalAmount * 0.97; // 3% total commission (1% platform + 2% bank)
+    }
+    return parseFloat(transaction.estimated_total) * 0.97 || 0;
+  };
+
   if (loading) {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
-        <p>Cargando compras...</p>
+        <p>Cargando transacciones...</p>
       </div>
     );
   }
@@ -68,19 +73,19 @@ export default function MyPurchases() {
     <div className="dashboard-container">
       <div className="page-header">
         <h1>
-          <ShoppingBag size={32} />
-          Mis Compras
+          <TrendingUp size={32} />
+          Mis Ventas
         </h1>
         <p className="subtitle">Transacciones en curso y completadas</p>
       </div>
 
       {transactions.length === 0 ? (
         <div className="empty-state">
-          <ShoppingBag size={64} style={{ opacity: 0.3 }} />
-          <h3>No tienes compras aún</h3>
-          <p>Cuando un vendedor acepte tu oferta, aparecerá aquí</p>
-          <Link to="/comprador/lotes" className="btn btn-primary">
-            Ver Lotes Disponibles
+          <TrendingUp size={64} style={{ opacity: 0.3 }} />
+          <h3>No tienes ventas aún</h3>
+          <p>Cuando aceptes una oferta, la transacción aparecerá aquí</p>
+          <Link to="/vendedor/solicitudes" className="btn btn-primary">
+            Ver Solicitudes de Compra
           </Link>
         </div>
       ) : (
@@ -89,10 +94,10 @@ export default function MyPurchases() {
             <thead>
               <tr>
                 <th>Lote</th>
-                <th>Vendedor</th>
+                <th>Comprador</th>
                 <th>Precio/kg</th>
                 <th>Peso</th>
-                <th>Total</th>
+                <th>Total Neto</th>
                 <th>Fecha</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -108,8 +113,8 @@ export default function MyPurchases() {
                     </div>
                   </td>
                   <td>
-                    <div className="seller-info">
-                      <span>{transaction.seller_name || 'N/A'}</span>
+                    <div className="buyer-info">
+                      <span>{transaction.buyer_name || 'N/A'}</span>
                     </div>
                   </td>
                   <td>
@@ -140,6 +145,7 @@ export default function MyPurchases() {
                         maximumFractionDigits: 2
                       })}
                     </strong>
+                    <small className="text-muted"> (después de comisiones)</small>
                   </td>
                   <td>
                     <div className="date-info">
@@ -152,22 +158,22 @@ export default function MyPurchases() {
                   </td>
                   <td>
                     <div className="action-buttons">
+                      {transaction.status === 'pending_weight' && (
+                        <Link
+                          to={`/vendedor/actualizar-peso/${transaction.id}`}
+                          className="btn btn-sm btn-primary"
+                          title="Actualizar peso real"
+                        >
+                          <Scale size={16} /> Actualizar Peso
+                        </Link>
+                      )}
                       <Link 
-                        to={`/comprador/lote/${transaction.lote_id}`}
+                        to={`/vendedor/lote/${transaction.lote_id}`}
                         className="btn btn-sm btn-outline"
                         title="Ver detalles del lote"
                       >
                         Ver Lote
                       </Link>
-                      {transaction.status === 'weight_confirmed' && (
-                        <Link
-                          to={`/comprador/confirmar-peso/${transaction.id}`}
-                          className="btn btn-sm btn-success"
-                          title="Confirmar peso y proceder al pago"
-                        >
-                          <CheckCircle size={16} /> Confirmar Peso
-                        </Link>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -182,16 +188,37 @@ export default function MyPurchases() {
           <h3>Resumen</h3>
           <div className="summary-grid">
             <div className="summary-item">
-              <span className="summary-label">Total de compras:</span>
+              <span className="summary-label">Total de ventas:</span>
               <span className="summary-value">{transactions.length}</span>
             </div>
             <div className="summary-item">
-              <span className="summary-label">Monto total:</span>
+              <span className="summary-label">Pendientes de peso:</span>
               <span className="summary-value">
-                ${transactions.reduce((sum, t) => sum + calculateTotal(t), 0).toLocaleString('es-AR', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                })}
+                {transactions.filter(t => t.status === 'pending_weight').length}
+              </span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">En proceso de pago:</span>
+              <span className="summary-value">
+                {transactions.filter(t => ['weight_confirmed', 'payment_pending', 'payment_processing'].includes(t.status)).length}
+              </span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Completadas:</span>
+              <span className="summary-value">
+                {transactions.filter(t => t.status === 'completed').length}
+              </span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Ingresos totales netos:</span>
+              <span className="summary-value">
+                ${transactions
+                  .filter(t => t.status === 'completed')
+                  .reduce((sum, t) => sum + calculateTotal(t), 0)
+                  .toLocaleString('es-AR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}
               </span>
             </div>
           </div>

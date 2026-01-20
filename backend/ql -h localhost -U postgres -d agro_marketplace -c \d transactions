@@ -1,0 +1,45 @@
+                                           Table "public.transactions"
+     Column      |            Type             | Collation | Nullable |                 Default                  
+-----------------+-----------------------------+-----------+----------+------------------------------------------
+ id              | integer                     |           | not null | nextval('transactions_id_seq'::regclass)
+ uuid            | uuid                        |           |          | uuid_generate_v4()
+ seller_id       | integer                     |           |          | 
+ buyer_id        | integer                     |           |          | 
+ lote_id         | integer                     |           |          | 
+ price           | numeric(10,2)               |           | not null | 
+ quantity        | integer                     |           | not null | 
+ animal_type     | character varying(50)       |           | not null | 
+ status          | character varying(20)       |           |          | 'pendiente'::character varying
+ payment_method  | character varying(50)       |           |          | 
+ payment_status  | character varying(50)       |           |          | 'pendiente'::character varying
+ location        | character varying(255)      |           |          | 
+ average_weight  | numeric(10,2)               |           |          | 
+ breed           | character varying(100)      |           |          | 
+ commission      | numeric(10,2)               |           |          | 0
+ commission_paid | boolean                     |           |          | false
+ notes           | text                        |           |          | 
+ additional_data | jsonb                       |           |          | '{}'::jsonb
+ created_at      | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ updated_at      | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ completed_at    | timestamp without time zone |           |          | 
+Indexes:
+    "transactions_pkey" PRIMARY KEY, btree (id)
+    "idx_transactions_buyer" btree (buyer_id)
+    "idx_transactions_buyer_id" btree (buyer_id)
+    "idx_transactions_created" btree (created_at)
+    "idx_transactions_lote_id" btree (lote_id)
+    "idx_transactions_payment_status" btree (payment_status)
+    "idx_transactions_seller" btree (seller_id)
+    "idx_transactions_seller_id" btree (seller_id)
+    "idx_transactions_status" btree (status)
+Check constraints:
+    "transactions_status_check" CHECK (status::text = ANY (ARRAY['pendiente'::character varying, 'aprobado'::character varying, 'completo'::character varying, 'cancelado'::character varying, 'en_proceso'::character varying]::text[]))
+Foreign-key constraints:
+    "transactions_buyer_id_fkey" FOREIGN KEY (buyer_id) REFERENCES users(id)
+    "transactions_lote_id_fkey" FOREIGN KEY (lote_id) REFERENCES lotes(id)
+    "transactions_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES users(id)
+Referenced by:
+    TABLE "payment_orders" CONSTRAINT "payment_orders_transaction_id_fkey" FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
+Triggers:
+    update_transactions_updated_at BEFORE UPDATE ON transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
+

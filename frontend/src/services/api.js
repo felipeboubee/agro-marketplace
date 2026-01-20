@@ -185,6 +185,26 @@ class ApiService {
   }
 
   /* =========================
+     ENDPOINTS DE OFERTAS
+     ========================= */
+
+  getMyOffers() {
+    return this.get('/offers');
+  }
+
+  acceptOffer(offerId) {
+    return this.post(`/offers/${offerId}/accept`);
+  }
+
+  rejectOffer(offerId) {
+    return this.post(`/offers/${offerId}/reject`);
+  }
+
+  counterOffer(offerId, counterPrice) {
+    return this.post(`/offers/${offerId}/counter`, { counter_price: counterPrice });
+  }
+
+  /* =========================
      ENDPOINTS GENERALES
      ========================= */
 

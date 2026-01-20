@@ -1629,11 +1629,25 @@ input[type="date"].input-field::-webkit-calendar-picker-indicator:hover {
 
 .summary-item {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
   padding: 16px;
   background: #f8f9fa;
   border-radius: 8px;
+}
+
+.summary-icon {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
 }
 
 .summary-label {

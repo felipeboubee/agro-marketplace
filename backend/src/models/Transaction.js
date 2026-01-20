@@ -1,67 +1,214 @@
 const pool = require('../config/database');
 
 const Transaction = {
-  async create(transactionData) {
+  // Create a new transaction after offer is accepted
+  async create(offerData) {
     const {
-      seller_id,
+      offer_id,
       buyer_id,
+      seller_id,
       lote_id,
-      price,
-      quantity,
-      animal_type,
-      status,
-      payment_method,
-      location,
-      average_weight,
-      breed
-    } = transactionData;
+      agreed_price_per_kg,
+      estimated_weight,
+      estimated_total
+    } = offerData;
 
     const query = `
       INSERT INTO transactions (
-        seller_id, buyer_id, lote_id, price, quantity, animal_type,
-        status, payment_method, location, average_weight, breed, created_at
+        offer_id, buyer_id, seller_id, lote_id,
+        agreed_price_per_kg, estimated_weight, estimated_total,
+        status
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending_weight')
       RETURNING *
     `;
-    
-    const values = [
-      seller_id, buyer_id, lote_id, price, quantity, animal_type,
-      status, payment_method, location, average_weight, breed
-    ];
-    
-    const { rows } = await pool.query(query, values);
-    return rows[0];
+
+    const result = await pool.query(query, [
+      offer_id,
+      buyer_id,
+      seller_id,
+      lote_id,
+      agreed_price_per_kg,
+      estimated_weight,
+      estimated_total
+    ]);
+
+    return result.rows[0];
   },
 
-  async findBySeller(seller_id) {
+  // Get transaction by ID
+  async findById(transactionId) {
     const query = `
-      SELECT t.*, u.name as buyer_name, u.email as buyer_email
+      SELECT 
+        t.*,
+        l.animal_type, l.breed, l.location,
+        buyer.name as buyer_name, buyer.email as buyer_email,
+        seller.name as seller_name, seller.email as seller_email,
+        o.payment_term, o.payment_method
       FROM transactions t
-      LEFT JOIN users u ON t.buyer_id = u.id
-      WHERE t.seller_id = $1
-      ORDER BY t.created_at DESC
+      JOIN lotes l ON t.lote_id = l.id
+      JOIN users buyer ON t.buyer_id = buyer.id
+      JOIN users seller ON t.seller_id = seller.id
+      JOIN offers o ON t.offer_id = o.id
+      WHERE t.id = $1
     `;
-    const { rows } = await pool.query(query, [seller_id]);
-    return rows;
+
+    const result = await pool.query(query, [transactionId]);
+    return result.rows[0];
   },
 
-  async findByBuyer(buyer_id) {
+  // Get transaction by offer ID
+  async findByOfferId(offerId) {
     const query = `
-      SELECT t.*, u.name as seller_name, u.email as seller_email
+      SELECT 
+        t.*,
+        l.animal_type, l.breed, l.location,
+        buyer.name as buyer_name, buyer.email as buyer_email,
+        seller.name as seller_name, seller.email as seller_email,
+        o.payment_term, o.payment_method
       FROM transactions t
-      LEFT JOIN users u ON t.seller_id = u.id
+      JOIN lotes l ON t.lote_id = l.id
+      JOIN users buyer ON t.buyer_id = buyer.id
+      JOIN users seller ON t.seller_id = seller.id
+      JOIN offers o ON t.offer_id = o.id
+      WHERE t.offer_id = $1
+    `;
+
+    const result = await pool.query(query, [offerId]);
+    return result.rows[0];
+  },
+
+  // Get all transactions for a buyer
+  async findByBuyerId(buyerId) {
+    const query = `
+      SELECT 
+        t.*,
+        l.animal_type, l.breed, l.location,
+        seller.name as seller_name, seller.email as seller_email,
+        o.payment_term, o.payment_method
+      FROM transactions t
+      JOIN lotes l ON t.lote_id = l.id
+      JOIN users seller ON t.seller_id = seller.id
+      JOIN offers o ON t.offer_id = o.id
       WHERE t.buyer_id = $1
       ORDER BY t.created_at DESC
     `;
-    const { rows } = await pool.query(query, [buyer_id]);
-    return rows;
+
+    const result = await pool.query(query, [buyerId]);
+    return result.rows;
   },
 
-  async updateStatus(id, status) {
-    const query = 'UPDATE transactions SET status = $1 WHERE id = $2 RETURNING *';
-    const { rows } = await pool.query(query, [status, id]);
-    return rows[0];
+  // Get all transactions for a seller
+  async findBySellerId(sellerId) {
+    const query = `
+      SELECT 
+        t.*,
+        l.animal_type, l.breed, l.location,
+        buyer.name as buyer_name, buyer.email as buyer_email,
+        o.payment_term, o.payment_method
+      FROM transactions t
+      JOIN lotes l ON t.lote_id = l.id
+      JOIN users buyer ON t.buyer_id = buyer.id
+      JOIN offers o ON t.offer_id = o.id
+      WHERE t.seller_id = $1
+      ORDER BY t.created_at DESC
+    `;
+
+    const result = await pool.query(query, [sellerId]);
+    return result.rows;
+  },
+
+  // Update weight from balance
+  async updateWeight(transactionId, weightData) {
+    const {
+      actual_weight,
+      balance_ticket_url
+    } = weightData;
+
+    const query = `
+      UPDATE transactions
+      SET 
+        actual_weight = $1,
+        balance_ticket_url = $2,
+        weight_updated_at = CURRENT_TIMESTAMP,
+        status = 'weight_confirmed',
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [
+      actual_weight,
+      balance_ticket_url,
+      transactionId
+    ]);
+
+    return result.rows[0];
+  },
+
+  // Buyer confirms weight
+  async confirmWeight(transactionId) {
+    // Calculate final amounts with commissions
+    const transaction = await this.findById(transactionId);
+    
+    const finalAmount = parseFloat(transaction.agreed_price_per_kg) * parseFloat(transaction.actual_weight);
+    const platformCommission = finalAmount * 0.01; // 1%
+    const bankCommission = finalAmount * 0.02; // 2%
+    const sellerNetAmount = finalAmount - platformCommission - bankCommission;
+
+    const query = `
+      UPDATE transactions
+      SET 
+        buyer_confirmed_weight = true,
+        buyer_confirmed_at = CURRENT_TIMESTAMP,
+        final_amount = $1,
+        platform_commission = $2,
+        bank_commission = $3,
+        seller_net_amount = $4,
+        status = 'payment_pending',
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [
+      finalAmount,
+      platformCommission,
+      bankCommission,
+      sellerNetAmount,
+      transactionId
+    ]);
+
+    return result.rows[0];
+  },
+
+  // Update transaction status
+  async updateStatus(transactionId, status) {
+    const query = `
+      UPDATE transactions
+      SET 
+        status = $1,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [status, transactionId]);
+    return result.rows[0];
+  },
+
+  // Check if lote has active transaction
+  async hasActiveTransaction(loteId) {
+    const query = `
+      SELECT EXISTS(
+        SELECT 1 FROM transactions
+        WHERE lote_id = $1 
+        AND status IN ('pending_weight', 'weight_confirmed', 'payment_pending', 'payment_processing')
+      ) as has_transaction
+    `;
+
+    const result = await pool.query(query, [loteId]);
+    return result.rows[0].has_transaction;
   },
 
   async getAll() {
