@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, TrendingUp, FileCheck, DollarSign, Plus, Clock, XCircle, CheckCircle } from 'lucide-react';
+import { ShoppingCart, TrendingUp, FileCheck, DollarSign, Plus, Clock, XCircle, CheckCircle, Eye, Package } from 'lucide-react';
 import { api } from '../../services/api';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import '../../styles/dashboard.css';
 
 export default function BuyerDashboard() {
@@ -14,13 +16,28 @@ export default function BuyerDashboard() {
     certificationStatus: 'no_certified',
     certificationDetails: null
   });
+  const [recentOffers, setRecentOffers] = useState([]);
+  const [recentTransactions, setRecentTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const loadDashboardData = async () => {
     try {
-      const data = await api.getBuyerStats();
-      console.log('BuyerDashboard - Stats received:', data);
-      setStats(data);
+      const [statsData, offersData, transactionsData] = await Promise.all([
+        api.getBuyerStats(),
+        api.getMyOffers(),
+        api.get('/transactions/buyer')
+      ]);
+      
+      console.log('BuyerDashboard - Stats received:', statsData);
+      console.log('BuyerDashboard - Certification status:', statsData.certificationStatus);
+      console.log('BuyerDashboard - Certification details:', statsData.certificationDetails);
+      setStats(statsData);
+      
+      // Get last 5 offers
+      setRecentOffers((offersData || []).slice(0, 5));
+      
+      // Get last 5 transactions
+      setRecentTransactions((transactionsData || []).slice(0, 5));
     } catch (error) {
       console.error('Error loading buyer dashboard:', error);
     } finally {
@@ -172,6 +189,174 @@ export default function BuyerDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Recent Offers */}
+      {recentOffers.length > 0 && (
+        <div className="recent-section">
+          <div className="section-header">
+            <h2>
+              <Clock size={24} />
+              Últimas Solicitudes de Compra
+            </h2>
+            <Link to="/comprador/solicitudes" className="btn btn-outline btn-sm">
+              Ver todas
+            </Link>
+          </div>
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Lote</th>
+                  <th className="text-center">Cantidad</th>
+                  <th className="text-center">Precio</th>
+                  <th className="text-center">Total</th>
+                  <th className="text-center">Fecha</th>
+                  <th className="text-center">Estado</th>
+                  <th className="text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentOffers.map((offer) => (
+                  <tr key={offer.id}>
+                    <td>
+                      <div className="lote-info">
+                        <strong>{offer.animal_type}</strong>
+                        <span className="text-muted">{offer.breed}</span>
+                      </div>
+                    </td>
+                    <td className="text-center number-cell">{offer.total_count}</td>
+                    <td className="text-center price-cell">
+                      ${parseFloat(offer.offered_price).toFixed(2)}/kg
+                    </td>
+                    <td className="text-center">
+                      <strong>
+                        ${(parseFloat(offer.offered_price) * parseFloat(offer.total_count) * parseFloat(offer.average_weight)).toLocaleString('es-AR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </strong>
+                    </td>
+                    <td className="text-center">
+                      {format(new Date(offer.created_at), 'dd/MM/yyyy', { locale: es })}
+                    </td>
+                    <td className="text-center">
+                      {offer.is_counter_offer ? (
+                        <span className="status-badge badge-info">Contraoferta</span>
+                      ) : offer.status === 'pendiente' ? (
+                        <span className="status-badge badge-warning">Pendiente</span>
+                      ) : offer.status === 'rechazada' ? (
+                        <span className="status-badge badge-danger">Rechazada</span>
+                      ) : (
+                        <span className="status-badge badge-default">{offer.status}</span>
+                      )}
+                    </td>
+                    <td className="text-center">
+                      <Link 
+                        to={`/comprador/lote/${offer.lote_id}`}
+                        className="btn btn-sm btn-primary"
+                        title="Ver lote"
+                      >
+                        <Eye size={16} />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Recent Transactions */}
+      {recentTransactions.length > 0 && (
+        <div className="recent-section">
+          <div className="section-header">
+            <h2>
+              <Package size={24} />
+              Últimas Compras
+            </h2>
+            <Link to="/comprador/compras" className="btn btn-outline btn-sm">
+              Ver todas
+            </Link>
+          </div>
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Lote</th>
+                  <th className="text-center">Cantidad</th>
+                  <th className="text-center">Precio Acordado</th>
+                  <th className="text-center">Total</th>
+                  <th className="text-center">Fecha</th>
+                  <th className="text-center">Estado</th>
+                  <th className="text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentTransactions.map((transaction) => (
+                  <tr key={transaction.id}>
+                    <td>
+                      <div className="lote-info">
+                        <strong>{transaction.animal_type}</strong>
+                        <span className="text-muted">{transaction.breed}</span>
+                      </div>
+                    </td>
+                    <td className="text-center number-cell">{transaction.total_count}</td>
+                    <td className="text-center price-cell">
+                      ${parseFloat(transaction.agreed_price_per_kg).toFixed(2)}/kg
+                    </td>
+                    <td className="text-center">
+                      <strong>
+                        ${(parseFloat(transaction.estimated_total) || 0).toLocaleString('es-AR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </strong>
+                    </td>
+                    <td className="text-center">
+                      {format(new Date(transaction.created_at), 'dd/MM/yyyy', { locale: es })}
+                    </td>
+                    <td className="text-center">
+                      {transaction.status === 'pending_weight' ? (
+                        <span className="status-badge badge-warning">Pendiente Peso</span>
+                      ) : transaction.status === 'weight_confirmed' ? (
+                        <span className="status-badge badge-info">Peso Confirmado</span>
+                      ) : transaction.status === 'payment_pending' ? (
+                        <span className="status-badge badge-warning">Pago Pendiente</span>
+                      ) : transaction.status === 'payment_processing' ? (
+                        <span className="status-badge badge-info">Procesando Pago</span>
+                      ) : transaction.status === 'completed' ? (
+                        <span className="status-badge badge-success">Completada</span>
+                      ) : (
+                        <span className="status-badge badge-default">{transaction.status}</span>
+                      )}
+                    </td>
+                    <td className="text-center">
+                      {transaction.status === 'weight_confirmed' && !transaction.buyer_confirmed_weight ? (
+                        <Link 
+                          to={`/comprador/confirmar-peso/${transaction.id}`}
+                          className="btn btn-sm btn-success"
+                          title="Confirmar peso"
+                        >
+                          <CheckCircle size={16} />
+                        </Link>
+                      ) : (
+                        <Link 
+                          to="/comprador/compras"
+                          className="btn btn-sm btn-primary"
+                          title="Ver detalle"
+                        >
+                          <Eye size={16} />
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

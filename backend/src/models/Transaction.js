@@ -49,7 +49,7 @@ const Transaction = {
       JOIN lotes l ON t.lote_id = l.id
       JOIN users buyer ON t.buyer_id = buyer.id
       JOIN users seller ON t.seller_id = seller.id
-      JOIN offers o ON t.offer_id = o.id
+      LEFT JOIN offers o ON t.offer_id = o.id
       WHERE t.id = $1
     `;
 
@@ -70,7 +70,7 @@ const Transaction = {
       JOIN lotes l ON t.lote_id = l.id
       JOIN users buyer ON t.buyer_id = buyer.id
       JOIN users seller ON t.seller_id = seller.id
-      JOIN offers o ON t.offer_id = o.id
+      LEFT JOIN offers o ON t.offer_id = o.id
       WHERE t.offer_id = $1
     `;
 
@@ -83,13 +83,13 @@ const Transaction = {
     const query = `
       SELECT 
         t.*,
-        l.animal_type, l.breed, l.location,
+        l.animal_type, l.breed, l.location, l.total_count, l.average_weight,
         seller.name as seller_name, seller.email as seller_email,
         o.payment_term, o.payment_method
       FROM transactions t
       JOIN lotes l ON t.lote_id = l.id
       JOIN users seller ON t.seller_id = seller.id
-      JOIN offers o ON t.offer_id = o.id
+      LEFT JOIN offers o ON t.offer_id = o.id
       WHERE t.buyer_id = $1
       ORDER BY t.created_at DESC
     `;
@@ -103,13 +103,13 @@ const Transaction = {
     const query = `
       SELECT 
         t.*,
-        l.animal_type, l.breed, l.location,
+        l.animal_type, l.breed, l.location, l.total_count, l.average_weight,
         buyer.name as buyer_name, buyer.email as buyer_email,
         o.payment_term, o.payment_method
       FROM transactions t
       JOIN lotes l ON t.lote_id = l.id
       JOIN users buyer ON t.buyer_id = buyer.id
-      JOIN offers o ON t.offer_id = o.id
+      LEFT JOIN offers o ON t.offer_id = o.id
       WHERE t.seller_id = $1
       ORDER BY t.created_at DESC
     `;

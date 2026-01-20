@@ -20,6 +20,41 @@ router.get('/my',
   transactionController.getMyTransactions
 );
 
+// @route   GET /api/transactions/buyer/stats
+// @desc    Get buyer's statistics
+// @access  Private/Comprador
+router.get('/buyer/stats', 
+  auth, 
+  roleCheck('comprador'), 
+  transactionController.getBuyerStats
+);
+
+// @route   GET /api/transactions/buyer
+// @desc    Get buyer's transactions
+// @access  Private/Comprador
+router.get('/buyer', 
+  auth, 
+  roleCheck('comprador'), 
+  transactionController.getBuyerTransactions
+);
+
+// @route   GET /api/transactions/seller
+// @desc    Get seller's transactions
+// @access  Private/Vendedor
+router.get('/seller', 
+  auth, 
+  roleCheck('vendedor'), 
+  transactionController.getSellerTransactions
+);
+
+// @route   GET /api/transactions/lote/:loteId/check
+// @desc    Check if lote has active transaction
+// @access  Private
+router.get('/lote/:loteId/check', 
+  auth, 
+  transactionController.checkLoteTransaction
+);
+
 // @route   GET /api/transactions/:id
 // @desc    Get specific transaction
 // @access  Private
@@ -44,41 +79,6 @@ router.post('/:id/confirm-weight',
   auth, 
   roleCheck('comprador'),
   transactionController.confirmWeight
-);
-
-// @route   GET /api/transactions/lote/:loteId/check
-// @desc    Check if lote has active transaction
-// @access  Private
-router.get('/lote/:loteId/check', 
-  auth, 
-  transactionController.checkLoteTransaction
-);
-
-// @route   GET /api/transactions/buyer
-// @desc    Get buyer's transactions (legacy)
-// @access  Private/Comprador
-router.get('/buyer', 
-  auth, 
-  roleCheck('comprador'), 
-  transactionController.getBuyerTransactions
-);
-
-// @route   GET /api/transactions/buyer/stats
-// @desc    Get buyer's statistics
-// @access  Private/Comprador
-router.get('/buyer/stats', 
-  auth, 
-  roleCheck('comprador'), 
-  transactionController.getBuyerStats
-);
-
-// @route   GET /api/transactions/seller
-// @desc    Get seller's transactions
-// @access  Private/Vendedor
-router.get('/seller', 
-  auth, 
-  roleCheck('vendedor'), 
-  transactionController.getSellerTransactions
 );
 
 // @route   PUT /api/transactions/:id/status

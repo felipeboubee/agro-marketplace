@@ -30,6 +30,7 @@ async function fixTransactionsTable() {
     
     // Now add missing columns one by one
     const columnsToAdd = [
+      { name: 'offer_id', type: 'INTEGER REFERENCES offers(id)' },
       { name: 'agreed_price_per_kg', type: 'DECIMAL(10,2)' },
       { name: 'estimated_weight', type: 'DECIMAL(10,2)' },
       { name: 'estimated_total', type: 'DECIMAL(10,2)' },
@@ -41,7 +42,8 @@ async function fixTransactionsTable() {
       { name: 'seller_net_amount', type: 'DECIMAL(10,2)' },
       { name: 'buyer_confirmed_weight', type: 'BOOLEAN DEFAULT FALSE' },
       { name: 'weight_updated_at', type: 'TIMESTAMP' },
-      { name: 'buyer_confirmed_at', type: 'TIMESTAMP' }
+      { name: 'buyer_confirmed_at', type: 'TIMESTAMP' },
+      { name: 'total_count', type: 'INTEGER' }
     ];
     
     console.log('Adding missing columns...\n');
