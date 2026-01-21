@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from "../../services/api";
 import { CheckCircle, AlertCircle, DollarSign, Package, TrendingUp, ArrowLeft } from 'lucide-react';
+import { formatPrice, formatWeight, formatPercentage } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 
 export default function ConfirmarPeso() {
@@ -111,7 +112,7 @@ export default function ConfirmarPeso() {
             </div>
             <div className="info-item">
               <span className="info-label">Precio acordado:</span>
-              <span className="info-value">${parseFloat(transaction.agreed_price_per_kg).toFixed(2)}/kg</span>
+              <span className="info-value">{formatPrice(transaction.agreed_price_per_kg)}/kg</span>
             </div>
           </div>
         </div>
@@ -125,13 +126,13 @@ export default function ConfirmarPeso() {
           <div className="weight-comparison-grid">
             <div className="weight-box">
               <span className="weight-label">Peso Estimado</span>
-              <span className="weight-value">{parseFloat(transaction.estimated_weight).toFixed(2)} kg</span>
+              <span className="weight-value">{formatWeight(transaction.estimated_weight)}</span>
               <span className="weight-sublabel">Inicial</span>
             </div>
             <div className="weight-arrow">→</div>
             <div className="weight-box weight-box-actual">
               <span className="weight-label">Peso Real</span>
-              <span className="weight-value actual">{parseFloat(transaction.actual_weight).toFixed(2)} kg</span>
+              <span className="weight-value actual">{formatWeight(transaction.actual_weight)}</span>
               <span className="weight-sublabel">Balanza</span>
             </div>
           </div>
@@ -139,46 +140,43 @@ export default function ConfirmarPeso() {
           <div className={`weight-difference ${weightDifference >= 0 ? 'positive' : 'negative'}`}>
             <AlertCircle size={20} />
             <span>
-              Diferencia: {weightDifference >= 0 ? '+' : ''}{weightDifference.toFixed(2)} kg 
-              ({weightDifferencePercent >= 0 ? '+' : ''}{weightDifferencePercent.toFixed(2)}%)
+              Diferencia: {weightDifference >= 0 ? '+' : ''}{formatWeight(Math.abs(weightDifference)).replace(' kg', '')} kg 
+              ({weightDifferencePercent >= 0 ? '+' : ''}{formatPercentage(Math.abs(weightDifferencePercent))})
             </span>
           </div>
 
           {transaction.balance_ticket_url && (
             <div className="ticket-link">
-              <a href={transaction.balance_ticket_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline">
+              <a 
+                href={`http://localhost:5000${transaction.balance_ticket_url}`} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="btn btn-sm btn-outline"
+              >
                 Ver Ticket de Balanza
               </a>
             </div>
           )}
         </div>
 
-        {/* Payment Breakdown */}
+        {/* Payment Summary */}
         <div className="info-card">
           <h3>
             <DollarSign size={24} />
-            Desglose de Pago
+            Resumen de Pago
           </h3>
           <div className="payment-breakdown">
             <div className="payment-row">
-              <span>Subtotal ({parseFloat(transaction.actual_weight).toFixed(2)} kg × ${parseFloat(transaction.agreed_price_per_kg).toFixed(2)}/kg):</span>
-              <span className="payment-amount">${finalAmount.toFixed(2)}</span>
+              <span>Peso real:</span>
+              <span className="payment-amount">{formatWeight(transaction.actual_weight)}</span>
             </div>
-            <div className="payment-row commission">
-              <span>Comisión Plataforma (1%):</span>
-              <span className="payment-amount">-${platformCommission.toFixed(2)}</span>
-            </div>
-            <div className="payment-row commission">
-              <span>Comisión Banco (2%):</span>
-              <span className="payment-amount">-${bankCommission.toFixed(2)}</span>
-            </div>
-            <div className="payment-row seller-net">
-              <span>Neto al Vendedor:</span>
-              <span className="payment-amount">${sellerNet.toFixed(2)}</span>
+            <div className="payment-row">
+              <span>Precio acordado por kg:</span>
+              <span className="payment-amount">{formatPrice(transaction.agreed_price_per_kg)}/kg</span>
             </div>
             <div className="payment-row total">
               <span><strong>Total a Pagar:</strong></span>
-              <span className="payment-amount total-amount"><strong>${finalAmount.toFixed(2)}</strong></span>
+              <span className="payment-amount total-amount"><strong>{formatPrice(finalAmount)}</strong></span>
             </div>
           </div>
         </div>
@@ -216,7 +214,7 @@ export default function ConfirmarPeso() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .confirmation-container {
           max-width: 900px;
           margin: 0 auto;

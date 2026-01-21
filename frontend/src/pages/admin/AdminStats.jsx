@@ -11,6 +11,7 @@ import {
   Calendar,
   Filter
 } from "lucide-react";
+import { formatPrice } from '../../utils/formatters';
 import "../../styles/dashboard.css";
 
 export default function AdminStats() {
@@ -156,8 +157,8 @@ export default function AdminStats() {
                     </span>
                   </td>
                   <td>{order.count}</td>
-                  <td>${parseFloat(order.avg_value || 0).toFixed(2)}</td>
-                  <td>${(parseInt(order.count) * parseFloat(order.avg_value || 0)).toFixed(2)}</td>
+                  <td>{formatPrice(order.avg_value || 0)}</td>
+                  <td>{formatPrice(parseInt(order.count) * parseFloat(order.avg_value || 0))}</td>
                 </tr>
               ))}
             </tbody>
@@ -190,7 +191,7 @@ export default function AdminStats() {
                     </div>
                   </td>
                   <td>{product.total_sold}</td>
-                  <td>${parseFloat(product.revenue || 0).toFixed(2)}</td>
+                  <td>{formatPrice(product.revenue || 0)}</td>
                 </tr>
               ))}
             </tbody>

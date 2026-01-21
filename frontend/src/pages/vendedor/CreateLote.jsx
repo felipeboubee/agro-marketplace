@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from "../../services/api";
+import { formatPrice, formatWeight } from '../../utils/formatters';
 import '../../styles/forms.css';
 
 const CreateLote = () => {
@@ -498,23 +499,17 @@ const CreateLote = () => {
           <div className="summary-item">
             <span className="summary-label">Valor Total Estimado:</span>
             <span className="summary-value">
-              ${formData.total_count && formData.average_weight && formData.base_price 
-                ? (formData.total_count * formData.average_weight * formData.base_price).toLocaleString('es-AR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })
-                : '0.00'}
+              {formData.total_count && formData.average_weight && formData.base_price 
+                ? formatPrice(formData.total_count * formData.average_weight * formData.base_price)
+                : formatPrice(0)}
             </span>
           </div>
           <div className="summary-item">
             <span className="summary-label">Peso Total:</span>
             <span className="summary-value">
               {formData.total_count && formData.average_weight 
-                ? (formData.total_count * formData.average_weight).toLocaleString('es-AR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  }) + ' kg'
-                : '0 kg'}
+                ? formatWeight(formData.total_count * formData.average_weight)
+                : '0,00 kg'}
             </span>
           </div>
         </div>

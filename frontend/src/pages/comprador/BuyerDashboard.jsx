@@ -4,6 +4,7 @@ import { ShoppingCart, TrendingUp, FileCheck, DollarSign, Plus, Clock, XCircle, 
 import { api } from '../../services/api';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatPrice } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 
 export default function BuyerDashboard() {
@@ -111,7 +112,7 @@ export default function BuyerDashboard() {
           </div>
           <div className="stat-content">
             <h3>Total Comprado</h3>
-            <p className="stat-value">${stats.totalSpent.toLocaleString('es-AR')}</p>
+            <p className="stat-value">{formatPrice(stats.totalSpent)}</p>
           </div>
         </div>
       </div>
@@ -226,14 +227,11 @@ export default function BuyerDashboard() {
                     </td>
                     <td className="text-center number-cell">{offer.total_count}</td>
                     <td className="text-center price-cell">
-                      ${parseFloat(offer.offered_price).toFixed(2)}/kg
+                      {formatPrice(offer.offered_price)}/kg
                     </td>
                     <td className="text-center">
                       <strong>
-                        ${(parseFloat(offer.offered_price) * parseFloat(offer.total_count) * parseFloat(offer.average_weight)).toLocaleString('es-AR', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}
+                        {formatPrice(parseFloat(offer.offered_price) * parseFloat(offer.total_count) * parseFloat(offer.average_weight))}
                       </strong>
                     </td>
                     <td className="text-center">
@@ -269,7 +267,7 @@ export default function BuyerDashboard() {
 
       {/* Recent Transactions */}
       {recentTransactions.length > 0 && (
-        <div className="recent-section">
+        <div className="recent-section" style={{ marginTop: '48px' }}>
           <div className="section-header">
             <h2>
               <Package size={24} />
@@ -303,14 +301,11 @@ export default function BuyerDashboard() {
                     </td>
                     <td className="text-center number-cell">{transaction.total_count}</td>
                     <td className="text-center price-cell">
-                      ${parseFloat(transaction.agreed_price_per_kg).toFixed(2)}/kg
+                      {formatPrice(transaction.agreed_price_per_kg)}/kg
                     </td>
                     <td className="text-center">
                       <strong>
-                        ${(parseFloat(transaction.estimated_total) || 0).toLocaleString('es-AR', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}
+                        {formatPrice(parseFloat(transaction.estimated_total) || 0)}
                       </strong>
                     </td>
                     <td className="text-center">

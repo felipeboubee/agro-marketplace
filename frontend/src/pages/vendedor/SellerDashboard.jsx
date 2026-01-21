@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../services/api";
 import { ShoppingCart, TrendingUp, AlertCircle, Plus } from "lucide-react";
+import { formatPrice } from "../../utils/formatters";
 import "../../styles/dashboard.css";
 
 export default function SellerDashboard() {
@@ -132,7 +133,7 @@ export default function SellerDashboard() {
                     <td>{lote.animal_type} - {lote.breed}</td>
                     <td>{lote.location}</td>
                     <td>{lote.total_count}</td>
-                    <td>${lote.base_price}</td>
+                    <td>{formatPrice(lote.base_price)}/kg</td>
                     <td>
                       <span className={`status-badge status-${lote.status}`}>
                         {lote.status === 'ofertado' ? 'Activo' : lote.status}

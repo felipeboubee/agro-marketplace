@@ -3,6 +3,7 @@ import {
   LayoutDashboard, 
   FileCheck,
   Clock,
+  DollarSign,
   LogOut,
   Settings,
   Menu,
@@ -23,6 +24,7 @@ export default function BankSidebar() {
   const navItems = [
     { path: "/banco", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
     { path: "/banco/solicitudes", icon: <FileCheck size={20} />, label: "Solicitudes" },
+    { path: "/banco/ordenes-pago", icon: <DollarSign size={20} />, label: "Órdenes de Pago" },
     { path: "/banco/aprobadas", icon: <Clock size={20} />, label: "Pendientes" },
     { path: "/banco/configuracion", icon: <Settings size={20} />, label: "Configuración" },
   ];

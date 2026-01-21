@@ -4,6 +4,7 @@ import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TrendingUp, DollarSign, Calendar, Scale, CheckCircle, Clock, AlertCircle, Eye } from 'lucide-react';
+import { formatPrice, formatWeight } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 
 export default function MyTransactions() {
@@ -118,19 +119,19 @@ export default function MyTransactions() {
                     </div>
                   </td>
                   <td>
-                    <span>${parseFloat(transaction.agreed_price_per_kg || 0).toFixed(2)}/kg</span>
+                    <span>{formatPrice(transaction.agreed_price_per_kg || 0)}/kg</span>
                   </td>
                   <td>
                     <div className="weight-info">
                       {transaction.actual_weight ? (
                         <div>
-                          <strong>{parseFloat(transaction.actual_weight).toFixed(2)} kg</strong>
+                          <strong>{formatWeight(transaction.actual_weight)}</strong>
                           <br />
                           <small className="text-muted">(real)</small>
                         </div>
                       ) : (
                         <div>
-                          <span>{parseFloat(transaction.estimated_weight || 0).toFixed(2)} kg</span>
+                          <span>{formatWeight(transaction.estimated_weight || 0)}</span>
                           <br />
                           <small className="text-muted">(estimado)</small>
                         </div>
@@ -140,10 +141,7 @@ export default function MyTransactions() {
                   <td>
                     <div>
                       <strong className="total-price">
-                        ${calculateTotal(transaction).toLocaleString('es-AR', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}
+                        {formatPrice(calculateTotal(transaction))}
                       </strong>
                       <br />
                       <small className="text-muted">(después de comisiones)</small>
@@ -239,13 +237,9 @@ export default function MyTransactions() {
             </div>
             <div className="stat-content">
               <h3 className="stat-value">
-                ${transactions
+                {formatPrice(transactions
                   .filter(t => t.status === 'completed')
-                  .reduce((sum, t) => sum + calculateTotal(t), 0)
-                  .toLocaleString('es-AR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}
+                  .reduce((sum, t) => sum + calculateTotal(t), 0))}
               </h3>
             </div>
           </div>

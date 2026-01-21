@@ -4,6 +4,7 @@ import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Clock, Package, DollarSign, Calendar, Check, X, User } from 'lucide-react';
+import { formatPrice } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 
 export default function PurchaseRequests() {
@@ -221,11 +222,11 @@ export default function PurchaseRequests() {
                         <td>
                           <div className="price-comparison">
                             <strong className="offered-price">
-                              ${parseFloat(offer.offered_price).toFixed(2)}/kg
+                              {formatPrice(offer.offered_price)}/kg
                             </strong>
                             {offer.original_price && (
                               <small className="text-muted">
-                                vs ${parseFloat(offer.original_price).toFixed(2)}/kg
+                                vs {formatPrice(offer.original_price)}/kg
                               </small>
                             )}
                           </div>
@@ -233,17 +234,11 @@ export default function PurchaseRequests() {
                         <td>
                           <div>
                             <strong className="total-price">
-                              ${calculateTotal(offer).toLocaleString('es-AR', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                              })}
+                              {formatPrice(calculateTotal(offer))}
                             </strong>
                             {offer.original_price && (
                               <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                                Base: ${(parseFloat(offer.original_price) * parseFloat(offer.total_count) * parseFloat(offer.average_weight)).toLocaleString('es-AR', {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2
-                                })}
+                                Base: {formatPrice(parseFloat(offer.original_price) * parseFloat(offer.total_count) * parseFloat(offer.average_weight))}
                               </div>
                             )}
                           </div>
@@ -377,8 +372,8 @@ export default function PurchaseRequests() {
                 <h4>Oferta Original</h4>
                 <div className="offer-details">
                   <p><strong>Comprador:</strong> {selectedOffer.buyer_name}</p>
-                  <p><strong>Precio ofrecido:</strong> ${parseFloat(selectedOffer.offered_price).toFixed(2)}/kg</p>
-                  <p><strong>Total estimado:</strong> ${calculateTotal(selectedOffer).toLocaleString('es-AR')}</p>
+                  <p><strong>Precio ofrecido:</strong> {formatPrice(selectedOffer.offered_price)}/kg</p>
+                  <p><strong>Total estimado:</strong> {formatPrice(calculateTotal(selectedOffer))}</p>
                   <p><strong>Plazo:</strong> {selectedOffer.payment_term || '-'}</p>
                   <p><strong>Medio de pago:</strong> {selectedOffer.payment_method || '-'}</p>
                 </div>
@@ -400,7 +395,7 @@ export default function PurchaseRequests() {
                 </div>
                 {counterPrice && (
                   <small className="text-muted" style={{ display: 'block', marginTop: '8px' }}>
-                    Nuevo total estimado: ${(parseFloat(counterPrice) * selectedOffer.lote_weight).toLocaleString('es-AR')}
+                    Nuevo total estimado: {formatPrice(parseFloat(counterPrice) * selectedOffer.lote_weight)}
                   </small>
                 )}
               </div>

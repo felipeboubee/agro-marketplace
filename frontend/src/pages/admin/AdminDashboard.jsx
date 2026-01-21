@@ -11,6 +11,7 @@ import {
   Clock,
   Package
 } from "lucide-react";
+import { formatPrice } from '../../utils/formatters';
 import "../../styles/dashboard.css";
 
 export default function AdminDashboard() {
@@ -60,11 +61,11 @@ export default function AdminDashboard() {
     },
     {
       title: "Ingresos Totales",
-      value: `$${(stats?.revenue || 0).toLocaleString()}`,
+      value: formatPrice(stats?.revenue || 0),
       icon: <DollarSign className="stat-icon" />,
       color: "purple",
       link: "/admin/stats",
-      subValue: `Promedio: $${(stats?.avgOrderValue || 0).toFixed(2)}`
+      subValue: `Promedio: ${formatPrice(stats?.avgOrderValue || 0)}`
     },
     {
       title: "Actividad Hoy",

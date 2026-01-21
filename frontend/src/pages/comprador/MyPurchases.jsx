@@ -4,6 +4,7 @@ import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ShoppingBag, Package, DollarSign, Eye, CheckCircle, Clock, AlertCircle, Truck } from 'lucide-react';
+import { formatPrice, formatWeight } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 
 export default function MyPurchases() {
@@ -107,27 +108,22 @@ export default function MyPurchases() {
                       <span className="text-muted">{transaction.breed || ''}</span>
                     </div>
                   </td>
-                  <td>
-                    <div className="seller-info">
-                      <span>{transaction.seller_name || 'N/A'}</span>
-                    </div>
+                  <td className="text-center">
+                    <span>{transaction.seller_name || 'N/A'}</span>
                   </td>
-                  <td>
-                    <div className="price-info">
-                      <DollarSign size={16} />
-                      <span>${parseFloat(transaction.agreed_price_per_kg || 0).toFixed(2)}/kg</span>
-                    </div>
+                  <td className="text-center">
+                    <span>{formatPrice(transaction.agreed_price_per_kg)}/kg</span>
                   </td>
                   <td>
                     <div className="weight-info">
                       {transaction.actual_weight ? (
                         <div>
-                          <strong>{parseFloat(transaction.actual_weight).toFixed(2)} kg</strong>
+                          <strong>{formatWeight(transaction.actual_weight)}</strong>
                           <small className="text-muted"> (real)</small>
                         </div>
                       ) : (
                         <div>
-                          <span>{parseFloat(transaction.estimated_weight || 0).toFixed(2)} kg</span>
+                          <span>{formatWeight(transaction.estimated_weight || 0)}</span>
                           <small className="text-muted"> (estimado)</small>
                         </div>
                       )}

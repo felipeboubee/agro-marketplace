@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatPrice, formatWeight } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 
 export default function LoteList() {
@@ -335,9 +336,9 @@ export default function LoteList() {
           </div>
           <div className="stat-content">
             <h3 className="stat-value">
-              ${filteredLotes.length > 0 
-                ? Math.round(filteredLotes.reduce((sum, lote) => sum + (lote.base_price || 0), 0) / filteredLotes.length)
-                : 0}/kg
+              {filteredLotes.length > 0 
+                ? formatPrice(Math.round(filteredLotes.reduce((sum, lote) => sum + (lote.base_price || 0), 0) / filteredLotes.length))
+                : formatPrice(0)}/kg
             </h3>
           </div>
         </div>
@@ -433,11 +434,11 @@ export default function LoteList() {
                       {lote.province || lote.location.split(',')[2]?.trim() || '-'}
                     </td>
                     <td className="number-cell">{lote.total_count}</td>
-                    <td className="number-cell">{lote.average_weight} kg</td>
+                    <td className="number-cell">{formatWeight(lote.average_weight)}</td>
                     <td className="price-cell">
                       <div className="cell-with-icon">
                         <DollarSign size={16} />
-                        {lote.base_price}/kg
+                        {formatPrice(lote.base_price)}/kg
                       </div>
                     </td>
                     <td>

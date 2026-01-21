@@ -3,6 +3,7 @@ import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { FileCheck, FileText, Filter, RefreshCw, Eye, User, Clock, CheckCircle, XCircle, Calendar, DollarSign, Upload } from 'lucide-react';
+import { formatPrice } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 
 const CertificationRequests = () => {
@@ -469,7 +470,7 @@ const CertificationRequests = () => {
                       <strong>Cargo:</strong> {selectedRequest.employment_info.position || '—'}
                     </div>
                     <div className="detail-item">
-                      <strong>Ingreso Mensual:</strong> {selectedRequest.employment_info.monthly_income ? `$${parseFloat(selectedRequest.employment_info.monthly_income).toLocaleString('es-AR')}` : '—'}
+                      <strong>Ingreso Mensual:</strong> {selectedRequest.employment_info.monthly_income ? formatPrice(selectedRequest.employment_info.monthly_income) : '—'}
                     </div>
                     <div className="detail-item">
                       <strong>Años Empleado:</strong> {selectedRequest.employment_info.years_employed || '—'}
@@ -483,13 +484,13 @@ const CertificationRequests = () => {
                   <h3>Información Financiera</h3>
                   <div className="detail-grid">
                     <div className="detail-item">
-                      <strong>Gastos Mensuales:</strong> {selectedRequest.financial_info.monthly_expenses ? `$${parseFloat(selectedRequest.financial_info.monthly_expenses).toLocaleString('es-AR')}` : '—'}
+                      <strong>Gastos Mensuales:</strong> {selectedRequest.financial_info.monthly_expenses ? formatPrice(selectedRequest.financial_info.monthly_expenses) : '—'}
                     </div>
                     <div className="detail-item">
-                      <strong>Activos:</strong> {selectedRequest.financial_info.assets ? `$${parseFloat(selectedRequest.financial_info.assets).toLocaleString('es-AR')}` : '—'}
+                      <strong>Activos:</strong> {selectedRequest.financial_info.assets ? formatPrice(selectedRequest.financial_info.assets) : '—'}
                     </div>
                     <div className="detail-item">
-                      <strong>Pasivos:</strong> {selectedRequest.financial_info.liabilities ? `$${parseFloat(selectedRequest.financial_info.liabilities).toLocaleString('es-AR')}` : '—'}
+                      <strong>Pasivos:</strong> {selectedRequest.financial_info.liabilities ? formatPrice(selectedRequest.financial_info.liabilities) : '—'}
                     </div>
                   </div>
                 </div>

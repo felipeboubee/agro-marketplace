@@ -4,6 +4,7 @@ import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Clock, Package, DollarSign, Calendar, X, AlertCircle, Eye, Check, Trash2 } from 'lucide-react';
+import { formatPrice } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 
 export default function PurchaseRequests() {
@@ -167,18 +168,18 @@ export default function PurchaseRequests() {
                           <span style={{ color: '#0066cc', fontSize: '13px', fontWeight: '600' }}>Contraoferta</span>
                         </div>
                         <div style={{ textDecoration: 'line-through', color: '#999', fontSize: '13px' }}>
-                          ${parseFloat(request.counter_offer_price || 0).toFixed(2)}/kg
+                          {formatPrice(request.counter_offer_price || 0)}/kg
                         </div>
                         <div className="price-cell" style={{ color: '#0066cc', fontWeight: 'bold', marginTop: '4px' }}>
-                          ${parseFloat(request.offered_price).toFixed(2)}/kg
+                          {formatPrice(request.offered_price)}/kg
                         </div>
                       </div>
                     ) : (
                       <div>
-                        <div className="price-cell" style={{ color: '#2196f3', fontWeight: 'bold' }}>${parseFloat(request.offered_price).toFixed(2)}/kg</div>
+                        <div className="price-cell" style={{ color: '#2196f3', fontWeight: 'bold' }}>{formatPrice(request.offered_price)}/kg</div>
                         {request.original_price && (
                           <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                            Base: ${parseFloat(request.original_price).toFixed(2)}/kg
+                            Base: {formatPrice(request.original_price)}/kg
                           </div>
                         )}
                       </div>
@@ -186,25 +187,16 @@ export default function PurchaseRequests() {
                   </td>
                   <td className="text-center">
                     <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#333' }}>
-                      ${calculateTotal(request).toLocaleString('es-AR', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })}
+                      {formatPrice(calculateTotal(request))}
                     </div>
                     {request.is_counter_offer && request.counter_offer_price && (
                       <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                        Original: ${(parseFloat(request.counter_offer_price) * parseFloat(request.total_count) * parseFloat(request.average_weight)).toLocaleString('es-AR', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}
+                        Original: {formatPrice(parseFloat(request.counter_offer_price) * parseFloat(request.total_count) * parseFloat(request.average_weight))}
                       </div>
                     )}
                     {!request.is_counter_offer && request.original_price && (
                       <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                        Base: ${(parseFloat(request.original_price) * parseFloat(request.total_count) * parseFloat(request.average_weight)).toLocaleString('es-AR', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}
+                        Base: {formatPrice(parseFloat(request.original_price) * parseFloat(request.total_count) * parseFloat(request.average_weight))}
                       </div>
                     )}
                   </td>
@@ -287,13 +279,9 @@ export default function PurchaseRequests() {
             </div>
             <div className="stat-content">
               <h3 className="stat-value">
-                ${requests
+                {formatPrice(requests
                   .filter(r => r.status === 'pendiente')
-                  .reduce((sum, r) => sum + calculateTotal(r), 0)
-                  .toLocaleString('es-AR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}
+                  .reduce((sum, r) => sum + calculateTotal(r), 0))}
               </h3>
             </div>
           </div>

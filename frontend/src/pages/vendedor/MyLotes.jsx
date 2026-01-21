@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatPrice, formatWeight } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 
 export default function MyLotes() {
@@ -292,11 +293,11 @@ export default function MyLotes() {
                       </div>
                     </td>
                     <td className="number-cell">{lote.total_count}</td>
-                    <td className="number-cell">{lote.average_weight} kg</td>
+                    <td className="number-cell">{formatWeight(lote.average_weight)}</td>
                     <td className="price-cell">
                       <div className="cell-with-icon">
                         <DollarSign size={16} />
-                        {lote.base_price}/kg
+                        {formatPrice(lote.base_price)}/kg
                       </div>
                     </td>
                     <td>{getStatusBadge(lote)}</td>

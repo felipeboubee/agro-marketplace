@@ -13,6 +13,7 @@ const offerRoutes = require('./routes/offerRoutes');
 const favoriteRoutes = require('./routes/favoriteRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const paymentOrderRoutes = require('./routes/paymentOrderRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 const initAdminTables = require('../scripts/initAdminTables');
 const requestLogger = require('./middleware/requestLogger');
 
@@ -31,6 +32,7 @@ app.use(express.urlencoded({ extended: true }));
 // Servir archivos estáticos para uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/uploads/certifications', express.static(path.join(__dirname, '../uploads/certifications')));
+app.use('/uploads/balance-tickets', express.static(path.join(__dirname, '../uploads/balance-tickets')));
 
 // Rutas
 app.use('/api/auth', authRoutes);
@@ -44,6 +46,7 @@ app.use('/api/offers', offerRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/payment-orders', paymentOrderRoutes);
+app.use('/api/upload', uploadRoutes);
 app.use(requestLogger);
 
 // Ruta de prueba

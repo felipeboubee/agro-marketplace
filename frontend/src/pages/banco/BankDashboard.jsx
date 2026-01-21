@@ -4,6 +4,7 @@ import { CheckCircle, Clock, DollarSign, Users, Eye, User, Calendar } from 'luci
 import { api } from '../../services/api';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatPrice } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 
 export default function BankDashboard() {
@@ -85,7 +86,7 @@ export default function BankDashboard() {
           </div>
           <div className="stat-content">
             <h3>Volumen Total</h3>
-            <p className="stat-value">${stats.totalVolume.toLocaleString('es-AR')}</p>
+            <p className="stat-value">{formatPrice(stats.totalVolume)}</p>
           </div>
         </div>
 
@@ -127,11 +128,20 @@ export default function BankDashboard() {
 
           <button 
             className="action-card"
+            onClick={() => navigate('/banco/ordenes-pago')}
+          >
+            <DollarSign size={32} />
+            <h3>Órdenes de Pago</h3>
+            <p>Gestionar pagos y comisiones</p>
+          </button>
+
+          <button 
+            className="action-card"
             onClick={() => navigate('/banco/aprobadas')}
           >
             <CheckCircle size={32} />
-            <h3>Solicitudes Pendientes</h3>
-            <p>Ver solicitudes que requieren revisión</p>
+            <h3>Solicitudes Aprobadas</h3>
+            <p>Ver certificaciones aprobadas</p>
           </button>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatPrice, formatWeight } from '../../utils/formatters';
 import '../../styles/forms.css';
 
 const LoteDetail = () => {
@@ -542,13 +543,10 @@ const LoteDetail = () => {
                 <div className="summary-content">
                   <span className="summary-label">Peso Total</span>
                   <span className="summary-value">
-                    {(lote.total_count * lote.average_weight).toLocaleString('es-AR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })} kg
+                    {formatWeight(lote.total_count * lote.average_weight)}
                   </span>
                   <span className="summary-subtext">
-                    {lote.average_weight} kg promedio
+                    {formatWeight(lote.average_weight)} promedio
                   </span>
                 </div>
               </div>
@@ -558,13 +556,10 @@ const LoteDetail = () => {
                 <div className="summary-content">
                   <span className="summary-label">Valor Estimado</span>
                   <span className="summary-value">
-                    ${calculateTotalValue().toLocaleString('es-AR', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })}
+                    {formatPrice(calculateTotalValue())}
                   </span>
                   <span className="summary-subtext">
-                    ${lote.base_price} por kg
+                    {formatPrice(lote.base_price)} por kg
                   </span>
                 </div>
               </div>
@@ -897,7 +892,7 @@ const LoteDetail = () => {
                       <span className="price-suffix">/kg</span>
                     </div>
                     <small>
-                      Rango sugerido: ${(lote.base_price * 0.8).toFixed(2)} - ${(lote.base_price * 1.2).toFixed(2)}
+                      Rango sugerido: {formatPrice(lote.base_price * 0.8)} - {formatPrice(lote.base_price * 1.2)}
                     </small>
                   </div>
 
@@ -932,20 +927,14 @@ const LoteDetail = () => {
                     <div className="calculation-row">
                       <span>Valor total de tu oferta:</span>
                       <span className="calculation-value">
-                        ${(offerPrice * lote.total_count * lote.average_weight).toLocaleString('es-AR', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}
+                        {formatPrice(offerPrice * lote.total_count * lote.average_weight)}
                       </span>
                     </div>
                     <div className="calculation-row">
                       <span>Diferencia con precio base:</span>
                       <span className={`calculation-value ${offerPrice < lote.base_price ? 'negative' : 'positive'}`}>
-                        {offerPrice < lote.base_price ? '-' : '+'}$
-                        {Math.abs((offerPrice - lote.base_price) * lote.total_count * lote.average_weight).toLocaleString('es-AR', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}
+                        {offerPrice < lote.base_price ? '-' : '+'}
+                        {formatPrice(Math.abs((offerPrice - lote.base_price) * lote.total_count * lote.average_weight))}
                       </span>
                     </div>
                   </div>
@@ -956,9 +945,9 @@ const LoteDetail = () => {
                 <>
                   <div className="offer-summary">
                     <h4>Resumen de tu Oferta</h4>
-                    <p><strong>Precio:</strong> ${offerPrice}/kg</p>
+                    <p><strong>Precio:</strong> {formatPrice(offerPrice)}/kg</p>
                     <p><strong>Plazo:</strong> {paymentTerm === 'custom' ? customTerm : paymentTerm === 'contado' ? 'Contado' : paymentTerm + ' días'}</p>
-                    <p><strong>Total:</strong> ${(offerPrice * lote.total_count * lote.average_weight).toLocaleString('es-AR')}</p>
+                    <p><strong>Total:</strong> {formatPrice(offerPrice * lote.total_count * lote.average_weight)}</p>
                   </div>
 
                   <div className="form-group">
@@ -1053,19 +1042,16 @@ const LoteDetail = () => {
                 </div>
                 <div className="summary-item">
                   <span>Peso total:</span>
-                  <span>{(purchaseData.quantity * lote.average_weight).toFixed(2)} kg</span>
+                  <span>{formatWeight(purchaseData.quantity * lote.average_weight)}</span>
                 </div>
                 <div className="summary-item">
                   <span>Precio unitario:</span>
-                  <span>${lote.base_price}/kg</span>
+                  <span>{formatPrice(lote.base_price)}/kg</span>
                 </div>
                 <div className="summary-item total">
                   <span>Total a pagar:</span>
                   <span>
-                    ${(purchaseData.quantity * lote.average_weight * lote.base_price).toLocaleString('es-AR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}
+                    {formatPrice(purchaseData.quantity * lote.average_weight * lote.base_price)}
                   </span>
                 </div>
               </div>

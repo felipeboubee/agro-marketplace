@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatPrice, formatWeight } from '../../utils/formatters';
 import '../../styles/forms.css';
 
 export default function LoteDetail() {
@@ -512,7 +513,7 @@ export default function LoteDetail() {
               </div>
               <div className="info-item">
                 <span className="label">Peso Total:</span>
-                <span className="value">{totalWeight.toFixed(2)} kg</span>
+                <span className="value">{formatWeight(totalWeight)}</span>
               </div>
               <div className="info-item">
                 <span className="label">Precio Base:</span>
@@ -524,12 +525,12 @@ export default function LoteDetail() {
                     className="edit-input"
                   />
                 ) : (
-                  <span className="value">${lote.base_price}/kg</span>
+                  <span className="value">{formatPrice(lote.base_price)}/kg</span>
                 )}
               </div>
               <div className="info-item">
                 <span className="label">Valor Total del Lote:</span>
-                <span className="value">${totalValue.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="value">{formatPrice(totalValue)}</span>
               </div>
               <div className="info-item">
                 <span className="label">Ubicación:</span>

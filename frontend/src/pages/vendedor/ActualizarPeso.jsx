@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from "../../services/api";
 import { Scale, Package, DollarSign, AlertCircle, ArrowLeft, Upload } from 'lucide-react';
+import { formatPrice, formatWeight, formatPercentage } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 
 export default function ActualizarPeso() {
@@ -11,7 +12,8 @@ export default function ActualizarPeso() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [actualWeight, setActualWeight] = useState('');
-  const [balanceTicketUrl, setBalanceTicketUrl] = useState('');
+  const [balanceTicketFile, setBalanceTicketFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
 
   const fetchTransaction = async () => {
     try {
@@ -42,6 +44,39 @@ export default function ActualizarPeso() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+      if (!validTypes.includes(file.type)) {
+        alert('Por favor selecciona un archivo PDF o imagen (JPG, PNG)');
+        e.target.value = '';
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('El archivo no debe superar los 5MB');
+        e.target.value = '';
+        return;
+      }
+      
+      setBalanceTicketFile(file);
+      
+      // Create preview for images
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFilePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setFilePreview(null);
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -50,24 +85,38 @@ export default function ActualizarPeso() {
       return;
     }
 
-    if (!balanceTicketUrl) {
-      if (!window.confirm('No has ingresado la URL del ticket de balanza. ¿Deseas continuar?')) {
-        return;
-      }
+    if (!balanceTicketFile) {
+      alert('Por favor sube el ticket de balanza (PDF o imagen)');
+      return;
     }
 
     setUpdating(true);
     try {
       const token = localStorage.getItem('token');
+      
+      // Upload file first
+      const formData = new FormData();
+      formData.append('file', balanceTicketFile);
+      
+      const uploadResponse = await api.post('/upload/balance-ticket', formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      const balanceTicketUrl = uploadResponse.fileUrl || uploadResponse.url;
+      
+      // Update transaction with weight and file URL
       await api.put(`/transactions/${id}/weight`, {
         actual_weight: parseFloat(actualWeight),
-        balance_ticket_url: balanceTicketUrl || null
+        balance_ticket_url: balanceTicketUrl
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       alert('Peso actualizado exitosamente. El comprador será notificado para confirmar.');
-      navigate('/vendedor/transacciones');
+      navigate('/vendedor/ventas');
     } catch (error) {
       console.error('Error updating weight:', error);
       alert(error.response?.data?.error || 'Error al actualizar el peso');
@@ -125,15 +174,15 @@ export default function ActualizarPeso() {
             </div>
             <div className="info-item">
               <span className="info-label">Precio acordado:</span>
-              <span className="info-value">${parseFloat(transaction.agreed_price_per_kg).toFixed(2)}/kg</span>
+              <span className="info-value">{formatPrice(transaction.agreed_price_per_kg)}/kg</span>
             </div>
             <div className="info-item">
               <span className="info-label">Peso estimado:</span>
-              <span className="info-value">{parseFloat(transaction.estimated_weight).toFixed(2)} kg</span>
+              <span className="info-value">{formatWeight(transaction.estimated_weight)}</span>
             </div>
             <div className="info-item">
               <span className="info-label">Total estimado:</span>
-              <span className="info-value">${estimatedTotal.toLocaleString('es-AR')}</span>
+              <span className="info-value">{formatPrice(estimatedTotal)}</span>
             </div>
           </div>
         </div>
@@ -165,18 +214,27 @@ export default function ActualizarPeso() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="balanceTicketUrl">URL del Ticket de Balanza (opcional)</label>
-            <div className="input-with-icon">
-              <Upload size={20} />
+            <label htmlFor="balanceTicketFile">Ticket de Balanza *</label>
+            <div className="file-input-wrapper">
+              <Upload size={20} className="file-input-icon" />
               <input
-                id="balanceTicketUrl"
-                type="text"
-                value={balanceTicketUrl}
-                onChange={(e) => setBalanceTicketUrl(e.target.value)}
-                placeholder="https://ejemplo.com/ticket.pdf"
+                id="balanceTicketFile"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={handleFileChange}
+                required
+                className="file-input"
               />
+              <label htmlFor="balanceTicketFile" className="file-input-label">
+                {balanceTicketFile ? balanceTicketFile.name : 'Seleccionar archivo (PDF o imagen)'}
+              </label>
             </div>
-            <small className="form-text">Puedes agregar un link al documento del ticket de balanza</small>
+            <small className="form-text">Sube el ticket de balanza en formato PDF o imagen (máx. 5MB)</small>
+            {filePreview && (
+              <div className="file-preview">
+                <img src={filePreview} alt="Preview" />
+              </div>
+            )}
           </div>
 
           {/* Preview Calculation */}
@@ -186,15 +244,15 @@ export default function ActualizarPeso() {
               <div className="preview-grid">
                 <div className="preview-item">
                   <span className="preview-label">Peso real:</span>
-                  <span className="preview-value">{parseFloat(actualWeight).toFixed(2)} kg</span>
+                  <span className="preview-value">{formatWeight(actualWeight)}</span>
                 </div>
                 <div className="preview-item">
                   <span className="preview-label">Precio/kg:</span>
-                  <span className="preview-value">${parseFloat(transaction.agreed_price_per_kg).toFixed(2)}</span>
+                  <span className="preview-value">{formatPrice(transaction.agreed_price_per_kg)}</span>
                 </div>
                 <div className="preview-item highlight">
                   <span className="preview-label">Nuevo total:</span>
-                  <span className="preview-value">${newTotal.toLocaleString('es-AR')}</span>
+                  <span className="preview-value">{formatPrice(newTotal)}</span>
                 </div>
               </div>
               
@@ -203,8 +261,8 @@ export default function ActualizarPeso() {
                   <AlertCircle size={18} />
                   <div>
                     <strong>Diferencia con estimado:</strong>
-                    <span> {difference > 0 ? '+' : ''}${Math.abs(difference).toLocaleString('es-AR')} </span>
-                    <span>({difference > 0 ? '+' : ''}{differencePercent.toFixed(2)}%)</span>
+                    <span> {difference > 0 ? '+' : ''}{formatPrice(Math.abs(difference))} </span>
+                    <span>({difference > 0 ? '+' : ''}{formatPercentage(Math.abs(differencePercent))})</span>
                   </div>
                 </div>
               )}
@@ -245,7 +303,7 @@ export default function ActualizarPeso() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .update-weight-container {
           max-width: 800px;
           margin: 0 auto;
@@ -329,6 +387,16 @@ export default function ActualizarPeso() {
           font-size: 16px;
         }
 
+        .input-with-icon input[type="number"]::-webkit-inner-spin-button,
+        .input-with-icon input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+
+        .input-with-icon input[type="number"] {
+          -moz-appearance: textfield;
+        }
+
         .input-suffix {
           position: absolute;
           right: 12px;
@@ -341,6 +409,67 @@ export default function ActualizarPeso() {
           margin-top: 6px;
           font-size: 14px;
           color: #666;
+        }
+
+        .file-input-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .file-input-icon {
+          position: absolute;
+          left: 16px;
+          color: #666;
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        .file-input {
+          position: absolute;
+          width: 0.1px;
+          height: 0.1px;
+          opacity: 0;
+          overflow: hidden;
+          z-index: -1;
+        }
+
+        .file-input-label {
+          display: block;
+          width: 100%;
+          padding: 14px 20px 14px 48px;
+          background: white;
+          border: 2px dashed #ddd;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.3s;
+          font-size: 15px;
+          color: #666;
+          min-height: 52px;
+          line-height: 1.5;
+        }
+
+        .file-input-label:hover {
+          border-color: #0066cc;
+          background: #f8f9fa;
+        }
+
+        .file-input:focus + .file-input-label {
+          border-color: #0066cc;
+          box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+        }
+
+        .file-preview {
+          margin-top: 12px;
+          padding: 12px;
+          background: #f8f9fa;
+          border-radius: 6px;
+        }
+
+        .file-preview img {
+          max-width: 100%;
+          max-height: 300px;
+          border-radius: 4px;
         }
 
         .calculation-preview {
@@ -357,8 +486,8 @@ export default function ActualizarPeso() {
 
         .preview-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-          gap: 16px;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
           margin-bottom: 16px;
         }
 
@@ -366,13 +495,30 @@ export default function ActualizarPeso() {
           display: flex;
           flex-direction: column;
           gap: 4px;
+          background: #e8f5e9;
+          padding: 16px;
+          border-radius: 8px;
+          border: 1px solid #c8e6c9;
+          width: 207px;
+          min-height: 52px;
+          justify-content: center;
+          align-items: center;
+          text-align: center;
         }
 
         .preview-item.highlight {
-          background: #e6f3ff;
-          padding: 12px;
-          border-radius: 6px;
-          border: 2px solid #0066cc;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          background: #e8f5e9;
+          padding: 16px;
+          border-radius: 8px;
+          border: 1px solid #c8e6c9;
+          width: 207px;
+          min-height: 52px;
+          justify-content: center;
+          align-items: center;
+          text-align: center;
         }
 
         .preview-label {
@@ -381,13 +527,12 @@ export default function ActualizarPeso() {
         }
 
         .preview-value {
-          font-size: 18px;
-          font-weight: bold;
+          font-size: 16px;
+          font-weight: 600;
           color: #333;
-        }
-
-        .preview-item.highlight .preview-value {
-          color: #0066cc;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .difference-alert {

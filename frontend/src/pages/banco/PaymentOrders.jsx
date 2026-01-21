@@ -3,6 +3,7 @@ import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DollarSign, Clock, CheckCircle, XCircle, TrendingUp, AlertCircle } from 'lucide-react';
+import { formatPrice } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 
 export default function PaymentOrders() {
@@ -172,7 +173,7 @@ export default function PaymentOrders() {
             <div className="stat-content">
               <span className="stat-label">Pendientes</span>
               <span className="stat-value">{statistics.pending_orders || 0}</span>
-              <span className="stat-amount">${parseFloat(statistics.pending_amount || 0).toLocaleString('es-AR')}</span>
+              <span className="stat-amount">{formatPrice(statistics.pending_amount || 0)}</span>
             </div>
           </div>
           <div className="stat-card">
@@ -191,7 +192,7 @@ export default function PaymentOrders() {
             <div className="stat-content">
               <span className="stat-label">Completadas</span>
               <span className="stat-value">{statistics.completed_orders || 0}</span>
-              <span className="stat-amount">${parseFloat(statistics.completed_amount || 0).toLocaleString('es-AR')}</span>
+              <span className="stat-amount">{formatPrice(statistics.completed_amount || 0)}</span>
             </div>
           </div>
           <div className="stat-card">
@@ -200,7 +201,7 @@ export default function PaymentOrders() {
             </div>
             <div className="stat-content">
               <span className="stat-label">Comisiones Banco</span>
-              <span className="stat-value">${parseFloat(statistics.total_bank_commission || 0).toLocaleString('es-AR')}</span>
+              <span className="stat-value">{formatPrice(statistics.total_bank_commission || 0)}</span>
             </div>
           </div>
         </div>
@@ -275,18 +276,12 @@ export default function PaymentOrders() {
                   </td>
                   <td>
                     <strong className="amount-cell">
-                      ${parseFloat(order.amount || 0).toLocaleString('es-AR', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })}
+                      {formatPrice(order.amount || 0)}
                     </strong>
                   </td>
                   <td>
                     <span className="commission-cell">
-                      ${parseFloat(order.bank_commission || 0).toLocaleString('es-AR', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })}
+                      {formatPrice(order.bank_commission || 0)}
                     </span>
                   </td>
                   <td>

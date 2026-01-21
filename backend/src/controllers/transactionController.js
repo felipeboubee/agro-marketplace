@@ -158,17 +158,23 @@ const transactionController = {
         return res.status(400).json({ error: 'El peso aún no ha sido actualizado por el vendedor' });
       }
 
+      // Get offer details for payment terms
+      const offer = await Offer.findById(transaction.offer_id);
+      if (!offer) {
+        return res.status(404).json({ error: 'Oferta no encontrada' });
+      }
+
       // Confirm weight (this calculates commissions and creates payment order)
       const confirmedTransaction = await Transaction.confirmWeight(id);
 
-      // Create payment order
+      // Create payment order with payment terms from offer
       const paymentOrder = await PaymentOrder.create({
         transaction_id: confirmedTransaction.id,
         buyer_id: confirmedTransaction.buyer_id,
         seller_id: confirmedTransaction.seller_id,
         amount: confirmedTransaction.final_amount,
-        payment_term: confirmedTransaction.payment_term,
-        payment_method: confirmedTransaction.payment_method,
+        payment_term: offer.payment_term || 'contado',
+        payment_method: offer.payment_method || 'transferencia',
         platform_commission: confirmedTransaction.platform_commission,
         bank_commission: confirmedTransaction.bank_commission,
         seller_net_amount: confirmedTransaction.seller_net_amount
