@@ -486,6 +486,25 @@ input[type="date"].input-field::-webkit-calendar-picker-indicator:hover {
   text-align: center;
 }
 
+.data-table td > * {
+  display: inline-block;
+  text-align: center;
+}
+
+.data-table .activity-description {
+  text-align: center;
+}
+
+.data-table .user-name,
+.data-table .user-email,
+.data-table .timestamp-date,
+.data-table .timestamp-time,
+.data-table .activity-type-text,
+.data-table .id-badge {
+  display: inline-block;
+  text-align: center;
+}
+
 .data-table tr:hover {
   background-color: rgba(67, 97, 238, 0.02);
 }
@@ -1736,4 +1755,98 @@ input[type="date"].input-field::-webkit-calendar-picker-indicator:hover {
   color: var(--primary-color);
   border-bottom-color: var(--primary-color);
   font-weight: 600;
+}
+/* Lotes Grid for Recent Lotes */
+.lotes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.lote-card {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lote-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.lote-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.lote-card-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--dark-color);
+  margin: 0;
+}
+
+.lote-badge {
+  background: var(--primary-color);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.lote-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.lote-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.lote-detail .label {
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.lote-detail .value {
+  font-size: 14px;
+  color: var(--dark-color);
+  font-weight: 600;
+}
+
+.lote-card-footer {
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.lote-card-footer .btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Responsive adjustments for lotes grid */
+@media (max-width: 768px) {
+  .lotes-grid {
+    grid-template-columns: 1fr;
+  }
 }

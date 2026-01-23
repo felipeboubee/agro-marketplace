@@ -1,6 +1,8 @@
 const Certification = require('../models/Certification');
 const User = require('../models/User');
 const pool = require('../config/database');
+const notificationService = require('../services/notificationService');
+const webhookService = require('../services/webhookService');
 
 const certificationController = {
   // Aplicar para certificación
@@ -69,6 +71,35 @@ const certificationController = {
         `UPDATE users SET buyer_status = 'pendiente_aprobacion' WHERE id = $1`,
         [user_id]
       );
+
+      // Get bank users for notification
+      const bankUsersResult = await pool.query(
+        'SELECT id FROM users WHERE user_type = $1 AND bank_name = $2',
+        ['banco', bank_name]
+      );
+
+      // Get user name for notification
+      const userResult = await pool.query('SELECT name FROM users WHERE id = $1', [user_id]);
+      const userName = userResult.rows[0]?.name || 'Usuario';
+
+      // Notify all bank users
+      for (const bankUser of bankUsersResult.rows) {
+        await notificationService.notifyCertificationReceived(
+          bankUser.id,
+          certification.id,
+          userName
+        ).catch(err => console.error('Error sending notification:', err));
+      }
+
+      // Send webhook to bank
+      webhookService.sendWebhook(bank_name, 'certification.created', {
+        certification_id: certification.id,
+        user_id,
+        user_name: userName,
+        bank_name,
+        status: 'pendiente_aprobacion',
+        created_at: certification.created_at
+      }).catch(err => console.error('Error sending webhook:', err));
 
       res.status(201).json({
         message: 'Solicitud de certificación enviada exitosamente',
@@ -282,6 +313,13 @@ const certificationController = {
       switch(status) {
         case 'aprobado':
           message = `¡Felicidades! Tu certificación con ${certification.bank_name} ha sido aprobada.`;
+          
+          // Notify buyer about certification approval
+          await notificationService.notifyCertificationApproved(
+            certification.user_id,
+            id,
+            certification.bank_name
+          ).catch(err => console.error('Error sending notification:', err));
           break;
         case 'rechazado':
           message = `Tu solicitud de certificación con ${certification.bank_name} ha sido rechazada. Podrás volver a solicitar en 30 días.`;
@@ -342,11 +380,19 @@ const certificationController = {
         [bank_name]
       );
 
-      // Volumen total certificado (suma de requested_amount de aprobados)
+      // Volumen total certificado (suma de approved_amount de aprobados)
       const volumeResult = await pool.query(
-        `SELECT COALESCE(SUM(requested_amount), 0) as total FROM certifications 
+        `SELECT COALESCE(SUM(approved_amount), 0) as total FROM certifications 
          WHERE bank_name = $1 AND status = 'aprobado'`,
         [bank_name]
+      );
+
+      // Comisiones totales del banco en órdenes completadas
+      const commissionsResult = await pool.query(
+        `SELECT COALESCE(SUM(bank_commission), 0) as total 
+         FROM payment_orders 
+         WHERE bank_id = $1 AND status = 'completed'`,
+        [bank_user_id]
       );
 
       // Clientes certificados únicos
@@ -381,7 +427,7 @@ const certificationController = {
       res.json({
         pendingRequests: parseInt(pendingResult.rows[0].count),
         approvedCertifications: approved,
-        totalVolume: parseFloat(volumeResult.rows[0].total),
+        totalVolume: parseFloat(commissionsResult.rows[0].total),
         certifiedClients: parseInt(clientsResult.rows[0].count),
         approvalRate,
         avgResponseTime

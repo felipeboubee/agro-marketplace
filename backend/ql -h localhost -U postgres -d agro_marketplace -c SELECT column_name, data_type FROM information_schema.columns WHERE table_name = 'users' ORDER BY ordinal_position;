@@ -1,0 +1,58 @@
+                                             Table "public.users"
+       Column        |            Type             | Collation | Nullable |              Default              
+---------------------+-----------------------------+-----------+----------+-----------------------------------
+ id                  | integer                     |           | not null | nextval('users_id_seq'::regclass)
+ uuid                | uuid                        |           |          | uuid_generate_v4()
+ email               | character varying(255)      |           | not null | 
+ password            | character varying(255)      |           | not null | 
+ name                | character varying(100)      |           | not null | 
+ user_type           | character varying(20)       |           | not null | 
+ phone               | character varying(20)       |           |          | 
+ location            | character varying(255)      |           |          | 
+ profile_data        | jsonb                       |           |          | '{}'::jsonb
+ last_login          | timestamp without time zone |           |          | 
+ is_active           | boolean                     |           |          | true
+ email_verified      | boolean                     |           |          | false
+ verification_token  | character varying(255)      |           |          | 
+ reset_token         | character varying(255)      |           |          | 
+ reset_token_expires | timestamp without time zone |           |          | 
+ created_at          | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ updated_at          | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ buyer_status        | character varying(50)       |           |          | 
+ bank_name           | character varying(100)      |           |          | 
+ dni                 | character varying(20)       |           |          | 
+ cuit_cuil           | character varying(20)       |           |          | 
+Indexes:
+    "users_pkey" PRIMARY KEY, btree (id)
+    "idx_users_created" btree (created_at)
+    "idx_users_email" btree (email)
+    "idx_users_status" btree (is_active)
+    "idx_users_type" btree (user_type)
+    "users_email_user_type_key" UNIQUE CONSTRAINT, btree (email, user_type)
+Check constraints:
+    "users_user_type_check" CHECK (user_type::text = ANY (ARRAY['comprador'::character varying, 'vendedor'::character varying, 'banco'::character varying, 'admin'::character varying]::text[]))
+Referenced by:
+    TABLE "activity_logs" CONSTRAINT "activity_logs_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+    TABLE "answers" CONSTRAINT "answers_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "certifications" CONSTRAINT "certifications_reviewed_by_fkey" FOREIGN KEY (reviewed_by) REFERENCES users(id)
+    TABLE "certifications" CONSTRAINT "certifications_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "favorites" CONSTRAINT "favorites_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "lotes" CONSTRAINT "lotes_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "messages" CONSTRAINT "messages_receiver_id_fkey" FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "messages" CONSTRAINT "messages_sender_id_fkey" FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "notifications" CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "offers" CONSTRAINT "offers_buyer_id_fkey" FOREIGN KEY (buyer_id) REFERENCES users(id)
+    TABLE "offers" CONSTRAINT "offers_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES users(id)
+    TABLE "orders" CONSTRAINT "orders_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+    TABLE "payment_methods" CONSTRAINT "payment_methods_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "payment_orders" CONSTRAINT "payment_orders_buyer_id_fkey" FOREIGN KEY (buyer_id) REFERENCES users(id)
+    TABLE "payment_orders" CONSTRAINT "payment_orders_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES users(id)
+    TABLE "questions" CONSTRAINT "questions_buyer_id_fkey" FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "seller_bank_accounts" CONSTRAINT "seller_bank_accounts_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "transactions" CONSTRAINT "transactions_buyer_id_fkey" FOREIGN KEY (buyer_id) REFERENCES users(id)
+    TABLE "transactions" CONSTRAINT "transactions_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES users(id)
+    TABLE "uploaded_files" CONSTRAINT "uploaded_files_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+    TABLE "user_activity" CONSTRAINT "user_activity_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+Triggers:
+    update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
+

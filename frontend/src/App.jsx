@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import TestBankAPI from './pages/TestBankAPI';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import BuyerLayout from './components/comprador/BuyerLayout';
 import SellerLayout from './components/vendedor/SellerLayout';
@@ -17,6 +18,7 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/test-bank-api" element={<TestBankAPI />} />
         
         {/* Protected Routes */}
         <Route path="/comprador/*" element={

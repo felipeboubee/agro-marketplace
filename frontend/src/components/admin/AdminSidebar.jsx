@@ -4,6 +4,7 @@ import {
   Users, 
   BarChart3, 
   Activity,
+  Database,
   LogOut,
   Settings,
   Menu,
@@ -26,6 +27,7 @@ export default function AdminSidebar() {
     { path: "/admin/users", icon: <Users size={20} />, label: "Usuarios" },
     { path: "/admin/stats", icon: <BarChart3 size={20} />, label: "Estadísticas" },
     { path: "/admin/activity", icon: <Activity size={20} />, label: "Actividad" },
+    { path: "/admin/database", icon: <Database size={20} />, label: "Base de Datos" },
     { path: "/admin/settings", icon: <Settings size={20} />, label: "Configuración" },
   ];
 

@@ -137,6 +137,15 @@ export default function BankDashboard() {
 
           <button 
             className="action-card"
+            onClick={() => navigate('/banco/verificaciones')}
+          >
+            <CheckCircle size={32} />
+            <h3>Verificaciones</h3>
+            <p>Aprobar métodos de pago y cuentas</p>
+          </button>
+
+          <button 
+            className="action-card"
             onClick={() => navigate('/banco/aprobadas')}
           >
             <CheckCircle size={32} />

@@ -1,5 +1,8 @@
 const PaymentOrder = require('../models/PaymentOrder');
 const Transaction = require('../models/Transaction');
+const notificationService = require('../services/notificationService');
+const webhookService = require('../services/webhookService');
+const pool = require('../config/database');
 
 const paymentOrderController = {
   // Get all payment orders (bank only)
@@ -116,6 +119,58 @@ const paymentOrderController = {
 
       // Update transaction status to completed
       await Transaction.updateStatus(order.transaction_id, 'completed');
+
+      // Get transaction details for notifications
+      const transactionResult = await pool.query(
+        'SELECT buyer_id, seller_id, final_amount FROM transactions WHERE id = $1',
+        [order.transaction_id]
+      );
+      const transaction = transactionResult.rows[0];
+
+      // Determine if provisional or final payment
+      const isProvisional = order.order_type === 'provisional';
+
+      // Notify buyer
+      if (isProvisional) {
+        await notificationService.notifyBuyerProvisionalPaymentApproved(
+          transaction.buyer_id,
+          order.transaction_id,
+          order.amount
+        ).catch(err => console.error('Error sending notification:', err));
+
+        // Also notify seller about provisional payment
+        await notificationService.notifyProvisionalPaymentApproved(
+          transaction.seller_id,
+          order.transaction_id,
+          order.amount
+        ).catch(err => console.error('Error sending notification:', err));
+      } else {
+        await notificationService.notifyBuyerFinalPaymentApproved(
+          transaction.buyer_id,
+          order.transaction_id,
+          order.amount
+        ).catch(err => console.error('Error sending notification:', err));
+
+        // Also notify seller about final payment
+        await notificationService.notifyFinalPaymentApproved(
+          transaction.seller_id,
+          order.transaction_id,
+          order.amount
+        ).catch(err => console.error('Error sending notification:', err));
+
+        // Notify both about transaction completion
+        await notificationService.notifyTransactionCompleted(
+          transaction.seller_id,
+          order.transaction_id,
+          transaction.final_amount
+        ).catch(err => console.error('Error sending notification:', err));
+
+        await notificationService.notifyBuyerTransactionCompleted(
+          transaction.buyer_id,
+          order.transaction_id,
+          transaction.final_amount
+        ).catch(err => console.error('Error sending notification:', err));
+      }
 
       res.json(updatedOrder);
     } catch (error) {

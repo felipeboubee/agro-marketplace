@@ -73,10 +73,12 @@ export default function ConfirmarPeso() {
     return null;
   }
 
-  const finalAmount = parseFloat(transaction.actual_weight) * parseFloat(transaction.agreed_price_per_kg);
-  const platformCommission = finalAmount * 0.01;
-  const bankCommission = finalAmount * 0.02;
-  const sellerNet = finalAmount - platformCommission - bankCommission;
+  const baseAmount = parseFloat(transaction.actual_weight) * parseFloat(transaction.agreed_price_per_kg);
+  const ivaAmount = baseAmount * 0.105;
+  const finalAmount = baseAmount + ivaAmount;
+  const platformCommission = baseAmount * 0.01;
+  const bankCommission = baseAmount * 0.02;
+  const sellerNet = baseAmount - platformCommission - bankCommission;
   const weightDifference = parseFloat(transaction.actual_weight) - parseFloat(transaction.estimated_weight);
   const weightDifferencePercent = (weightDifference / parseFloat(transaction.estimated_weight)) * 100;
 
@@ -173,6 +175,14 @@ export default function ConfirmarPeso() {
             <div className="payment-row">
               <span>Precio acordado por kg:</span>
               <span className="payment-amount">{formatPrice(transaction.agreed_price_per_kg)}/kg</span>
+            </div>
+            <div className="payment-row subtotal">
+              <span>Subtotal:</span>
+              <span className="payment-amount">{formatPrice(baseAmount)}</span>
+            </div>
+            <div className="payment-row iva">
+              <span>IVA (10.5%):</span>
+              <span className="payment-amount iva-amount">+ {formatPrice(ivaAmount)}</span>
             </div>
             <div className="payment-row total">
               <span><strong>Total a Pagar:</strong></span>
@@ -356,6 +366,21 @@ export default function ConfirmarPeso() {
         .payment-row.commission {
           background: #fff3cd;
           color: #856404;
+        }
+
+        .payment-row.subtotal {
+          border-top: 1px solid #e0e0e0;
+          padding-top: 12px;
+          margin-top: 8px;
+        }
+
+        .payment-row.iva {
+          color: #0066cc;
+        }
+
+        .iva-amount {
+          color: #0066cc;
+          font-weight: 700;
         }
 
         .payment-row.seller-net {

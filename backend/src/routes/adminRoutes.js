@@ -23,4 +23,10 @@ router.get('/activity/detailed', auth, requireAdmin, adminController.getDetailed
 router.get('/users', auth, requireAdmin, adminController.getUsers);
 router.get('/users/:userId/activity', auth, requireAdmin, adminController.getUserActivity);
 
+// CRUD operations for all tables
+router.get('/tables/:tableName', auth, requireAdmin, adminController.getTableData);
+router.post('/tables/:tableName', auth, requireAdmin, adminController.createRecord);
+router.put('/tables/:tableName/:id', auth, requireAdmin, adminController.updateRecord);
+router.delete('/tables/:tableName/:id', auth, requireAdmin, adminController.deleteRecord);
+
 module.exports = router;

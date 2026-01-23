@@ -181,6 +181,14 @@ export default function AdminActivity() {
         return <Clock size={18} className="activity-icon-svg" />;
       case 'lote_publicado':
         return <Package size={18} className="activity-icon-svg" />;
+      case 'transaction_created':
+      case 'transaction_weight_confirmed':
+      case 'transaction_completed':
+        return <ShoppingCart size={18} className="activity-icon-svg" />;
+      case 'offer_created':
+      case 'offer_accepted':
+      case 'offer_rejected':
+        return <FileCheck size={18} className="activity-icon-svg" />;
       default:
         return <Activity size={18} className="activity-icon-svg" />;
     }
@@ -208,6 +216,18 @@ export default function AdminActivity() {
         return 'Más Datos Solicitados';
       case 'lote_publicado':
         return 'Lote Publicado';
+      case 'transaction_created':
+        return 'Transacción Creada';
+      case 'transaction_weight_confirmed':
+        return 'Peso Confirmado';
+      case 'transaction_completed':
+        return 'Transacción Completada';
+      case 'offer_created':
+        return 'Oferta Creada';
+      case 'offer_accepted':
+        return 'Oferta Aceptada';
+      case 'offer_rejected':
+        return 'Oferta Rechazada';
       default:
         return type || 'Actividad';
     }

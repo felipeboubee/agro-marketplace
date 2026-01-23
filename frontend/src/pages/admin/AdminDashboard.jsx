@@ -6,6 +6,7 @@ import {
   ShoppingCart, 
   DollarSign, 
   Activity,
+  Database,
   UserPlus,
   TrendingUp,
   Clock,
@@ -179,6 +180,10 @@ export default function AdminDashboard() {
           <Link to="/admin/activity" className="quick-link">
             <Activity size={24} />
             <span>Registro de Actividad</span>
+          </Link>
+          <Link to="/admin/database" className="quick-link">
+            <Database size={24} />
+            <span>Base de Datos</span>
           </Link>
         </div>
       </div>

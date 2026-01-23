@@ -2,19 +2,19 @@ const pool = require('../config/database');
 
 class Offer {
   // Create a new offer with payment details
-  async create(buyerId, sellerId, loteId, offeredPrice, originalPrice, paymentTerm, paymentMethod, hasCertification) {
+  async create(buyerId, sellerId, loteId, offeredPrice, originalPrice, paymentTerm, paymentMethod, hasCertification, paymentMethodId = null) {
     const query = `
       INSERT INTO offers (
         buyer_id, seller_id, lote_id, offered_price, original_price, 
         payment_term, payment_method, has_buyer_certification, 
-        status, created_at
+        payment_method_id, status, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendiente', NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pendiente', NOW())
       RETURNING *
     `;
     const { rows } = await pool.query(query, [
       buyerId, sellerId, loteId, offeredPrice, originalPrice,
-      paymentTerm, paymentMethod, hasCertification
+      paymentTerm, paymentMethod, hasCertification, paymentMethodId
     ]);
     return rows[0];
   }

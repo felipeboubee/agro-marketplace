@@ -43,6 +43,11 @@ router.post('/',
 // @access  Private/Vendedor
 router.get('/seller', auth, roleCheck('vendedor'), loteController.getSellerLotes);
 
+// @route   GET /api/lotes/recent/by-province
+// @desc    Get recent lotes by province
+// @access  Private
+router.get('/recent/by-province', auth, loteController.getRecentLotesByProvince);
+
 // @route   GET /api/lotes/:id
 // @desc    Get lote by ID
 // @access  Private

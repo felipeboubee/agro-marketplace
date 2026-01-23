@@ -9,7 +9,9 @@ import {
   X,
   RefreshCw,
   ShoppingBag,
-  Clock
+  Clock,
+  CreditCard,
+  MessageCircle
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../services/api";
@@ -49,8 +51,8 @@ export default function BuyerSidebar() {
     { path: "/comprador/lotes", icon: <ShoppingCart size={20} />, label: "Ver Lotes" },
     { path: "/comprador/mis-compras", icon: <ShoppingBag size={20} />, label: "Mis Compras" },
     { path: "/comprador/solicitudes", icon: <Clock size={20} />, label: "Solicitudes de Compra" },
-    { path: "/comprador/certificaciones", icon: <FileCheck size={20} />, label: "Certificación Financiera" },
-    { path: "/comprador/configuracion", icon: <Settings size={20} />, label: "Configuración" },
+    { path: "/comprador/mensajes", icon: <MessageCircle size={20} />, label: "Mensajes" },
+    { path: "/comprador/certificaciones", icon: <FileCheck size={20} />, label: "Certificación Financiera" },    { path: "/comprador/medios-pago", icon: <CreditCard size={20} />, label: "Medios de Pago" },    { path: "/comprador/configuracion", icon: <Settings size={20} />, label: "Configuración" },
   ];
 
   return (

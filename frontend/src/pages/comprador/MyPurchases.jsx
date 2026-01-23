@@ -3,13 +3,16 @@ import { Link } from 'react-router-dom';
 import { api } from "../../services/api";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ShoppingBag, Package, DollarSign, Eye, CheckCircle, Clock, AlertCircle, Truck } from 'lucide-react';
+import { ShoppingBag, Package, DollarSign, Eye, CheckCircle, Clock, AlertCircle, Truck, MessageCircle } from 'lucide-react';
 import { formatPrice, formatWeight } from '../../utils/formatters';
+import ChatBox from '../../components/ChatBox';
 import '../../styles/dashboard.css';
 
 export default function MyPurchases() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
 
   const fetchTransactions = async () => {
     try {
@@ -153,6 +156,17 @@ export default function MyPurchases() {
                         <Eye size={16} />
                         <span className="btn-text">Ver Lote</span>
                       </Link>
+                      <button
+                        onClick={() => {
+                          setSelectedTransaction(transaction);
+                          setChatOpen(true);
+                        }}
+                        className="btn btn-sm btn-primary"
+                        title="Chatear con el vendedor"
+                      >
+                        <MessageCircle size={16} />
+                        <span className="btn-text">Chat</span>
+                      </button>
                       {transaction.status === 'weight_confirmed' && (
                         <Link
                           to={`/comprador/confirmar-peso/${transaction.id}`}
@@ -222,6 +236,15 @@ export default function MyPurchases() {
             </div>
           </div>
         </div>
+      )}
+
+      {chatOpen && selectedTransaction && (
+        <ChatBox
+          transactionId={selectedTransaction.id}
+          otherUserName={selectedTransaction.seller_name}
+          isOpen={chatOpen}
+          onClose={() => setChatOpen(false)}
+        />
       )}
     </div>
   );

@@ -126,6 +126,22 @@ const userController = {
       console.error('Error fetching users by type:', error);
       res.status(500).json({ error: 'Error interno del servidor' });
     }
+  },
+
+  async getBanks(req, res) {
+    try {
+      const banks = await User.getByType('banco');
+      // Solo devolver id, name, email
+      const banksList = banks.map(bank => ({
+        id: bank.id,
+        name: bank.name,
+        email: bank.email
+      }));
+      res.json(banksList);
+    } catch (error) {
+      console.error('Error fetching banks:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
   }
 };
 

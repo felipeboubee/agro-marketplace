@@ -8,7 +8,10 @@ import SellerSettings from "../../pages/vendedor/SellerSettings";
 import PurchaseRequests from "../../pages/vendedor/PurchaseRequests";
 import MyTransactions from "../../pages/vendedor/MyTransactions";
 import ActualizarPeso from "../../pages/vendedor/ActualizarPeso";
+import BankAccount from "../../pages/vendedor/BankAccount";
+import Messages from "../../pages/Messages";
 import NotFound from "../../pages/NotFound";
+import NotificationBell from "../NotificationBell/NotificationBell";
 import "../../styles/admin.css";
 
 export default function SellerLayout() {
@@ -16,6 +19,10 @@ export default function SellerLayout() {
     <div className="admin-layout">
       <SellerSidebar />
       <main className="admin-main">
+        <div className="admin-header">
+          <h1>Panel de Vendedor</h1>
+          <NotificationBell />
+        </div>
         <div className="admin-content">
           <Routes>
             <Route path="/" element={<SellerDashboard />} />
@@ -25,6 +32,8 @@ export default function SellerLayout() {
             <Route path="/solicitudes" element={<PurchaseRequests />} />
             <Route path="/ventas" element={<MyTransactions />} />
             <Route path="/actualizar-peso/:id" element={<ActualizarPeso />} />
+            <Route path="/mensajes" element={<Messages />} />
+            <Route path="/cuenta-bancaria" element={<BankAccount />} />
             <Route path="/configuracion" element={<SellerSettings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

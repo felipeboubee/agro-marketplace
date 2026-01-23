@@ -19,6 +19,11 @@ router.put('/profile', auth, userController.updateProfile);
 // @access  Private/Admin
 router.get('/all', auth, roleCheck('admin'), userController.getAllUsers);
 
+// @route   GET /api/users/banks
+// @desc    Get all bank users
+// @access  Private
+router.get('/banks', auth, userController.getBanks);
+
 // @route   GET /api/users/:id
 // @desc    Get user by ID (admin only)
 // @access  Private/Admin

@@ -34,16 +34,33 @@ const LoteDetail = () => {
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [questionError, setQuestionError] = useState('');
   const [hasOffer, setHasOffer] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState('');
 
   useEffect(() => {
     fetchLoteDetails();
     fetchQuestions();
     checkExistingOffer();
+    fetchPaymentMethods();
     const userData = localStorage.getItem('user');
     if (userData) {
       setUser(JSON.parse(userData));
     }
   }, [id]);
+
+  const fetchPaymentMethods = async () => {
+    try {
+      const response = await api.get('/payment-methods');
+      setPaymentMethods(response);
+      // Set default payment method if exists
+      const defaultMethod = response.find(m => m.is_default);
+      if (defaultMethod) {
+        setSelectedPaymentMethodId(defaultMethod.id);
+      }
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
+    }
+  };
 
   const checkExistingOffer = async () => {
     try {
@@ -155,6 +172,12 @@ const LoteDetail = () => {
 
   const submitOffer = async () => {
     try {
+      // Validar que haya seleccionado un método de pago
+      if (!selectedPaymentMethodId) {
+        alert('Debes seleccionar un método de pago');
+        return;
+      }
+
       // Validar que si no es contado, solo se puede pagar con cheque
       if (paymentTerm !== 'contado' && paymentMethod !== 'cheque') {
         alert('Solo se acepta cheque para plazos diferentes a contado');
@@ -174,7 +197,8 @@ const LoteDetail = () => {
         offered_price: parseFloat(offerPrice),
         original_price: lote.base_price,
         payment_term: finalPaymentTerm,
-        payment_method: paymentMethod
+        payment_method: paymentMethod,
+        payment_method_id: selectedPaymentMethodId
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -186,6 +210,7 @@ const LoteDetail = () => {
       setPaymentTerm('contado');
       setPaymentMethod('transferencia');
       setCustomTerm('');
+      setSelectedPaymentMethodId('');
     } catch (error) {
       console.error('Error submitting offer:', error);
       alert('Error al enviar la oferta');
@@ -971,6 +996,48 @@ const LoteDetail = () => {
                       <small className="text-muted">
                         Para plazos diferentes a contado solo se acepta cheque
                       </small>
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label>Seleccionar Método de Pago Registrado *</label>
+                    {paymentMethods.length > 0 ? (
+                      <select
+                        value={selectedPaymentMethodId}
+                        onChange={(e) => setSelectedPaymentMethodId(e.target.value)}
+                        className="form-control"
+                        required
+                      >
+                        <option value="">Selecciona un método</option>
+                        {paymentMethods
+                          .filter(pm => {
+                            // Filter by payment type
+                            if (paymentMethod === 'transferencia') return pm.payment_type === 'bank_transfer';
+                            if (paymentMethod === 'tarjeta') return pm.payment_type === 'credit_card';
+                            if (paymentMethod === 'cheque') return pm.payment_type === 'check';
+                            return false;
+                          })
+                          .map(pm => {
+                            let label = '';
+                            if (pm.payment_type === 'bank_transfer') {
+                              label = `${pm.bank_name} - ${pm.cbu?.slice(-4) || 'N/A'}`;
+                            } else if (pm.payment_type === 'credit_card') {
+                              label = `${pm.card_brand?.toUpperCase()} **** ${pm.card_number_last4}`;
+                            } else if (pm.payment_type === 'check') {
+                              label = `${pm.check_bank_name} - ${pm.check_issuer_name}`;
+                            }
+                            return (
+                              <option key={pm.id} value={pm.id}>
+                                {label} {pm.is_default ? '(Predeterminado)' : ''}
+                              </option>
+                            );
+                          })}
+                      </select>
+                    ) : (
+                      <div className="alert alert-warning">
+                        No tienes métodos de pago registrados. 
+                        <a href="/comprador/medios-pago" target="_blank"> Agregar método de pago</a>
+                      </div>
                     )}
                   </div>
                 </>

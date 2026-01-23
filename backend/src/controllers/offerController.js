@@ -2,12 +2,14 @@ const Offer = require('../models/Offer');
 const Lote = require('../models/Lote');
 const Certification = require('../models/Certification');
 const Transaction = require('../models/Transaction');
+const notificationService = require('../services/notificationService');
+const pool = require('../config/database');
 
 // Create a new offer with payment details
 exports.createOffer = async (req, res) => {
   try {
     const { loteId } = req.params;
-    const { offered_price, original_price, payment_term, payment_method } = req.body;
+    const { offered_price, original_price, payment_term, payment_method, payment_method_id } = req.body;
     const buyerId = req.userId;
     const userType = req.userType;
 
@@ -19,6 +21,11 @@ exports.createOffer = async (req, res) => {
     // Validate input
     if (!offered_price || !original_price || !payment_term || !payment_method) {
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    }
+
+    // Validate payment_method_id is provided
+    if (!payment_method_id) {
+      return res.status(400).json({ error: 'Debe seleccionar un método de pago registrado' });
     }
 
     // Validate payment method based on payment term
@@ -50,8 +57,22 @@ exports.createOffer = async (req, res) => {
       parseFloat(original_price),
       payment_term,
       payment_method,
-      hasCertification
+      hasCertification,
+      payment_method_id
     );
+
+    // Get buyer name for notification
+    const buyerResult = await pool.query('SELECT name FROM users WHERE id = $1', [buyerId]);
+    const buyerName = buyerResult.rows[0]?.name || 'Comprador';
+
+    // Notify seller about new offer
+    await notificationService.notifyOfferReceived(
+      lote.seller_id,
+      offer.id,
+      loteId,
+      buyerName,
+      parseFloat(offered_price)
+    ).catch(err => console.error('Error sending notification:', err));
 
     res.status(201).json({
       message: 'Oferta creada exitosamente',
@@ -159,7 +180,10 @@ exports.updateOfferStatus = async (req, res) => {
       const estimatedWeight = parseFloat(lote.total_count) * parseFloat(lote.average_weight);
       const estimatedTotal = parseFloat(offer.offered_price) * estimatedWeight;
 
-      await Transaction.create({
+      // Save negotiation date (when seller accepts)
+      const negotiationDate = new Date();
+
+      const transaction = await Transaction.create({
         offer_id: offer.id,
         buyer_id: offer.buyer_id,
         seller_id: offer.seller_id,
@@ -170,7 +194,141 @@ exports.updateOfferStatus = async (req, res) => {
         quantity: lote.total_count,
         animal_type: lote.animal_type
       });
+
+      // Update transaction with negotiation_date and payment_term
+      await pool.query(
+        'UPDATE transactions SET negotiation_date = $1, payment_term = $2 WHERE id = $3',
+        [negotiationDate, offer.payment_term, transaction.id]
+      );
+
+      // Create provisional payment order (85% of estimated total)
+      const PaymentOrder = require('../models/PaymentOrder');
+      const SellerBankAccount = require('../models/SellerBankAccount');
+      
+      let sellerBankAccount = null;
+      try {
+        sellerBankAccount = await SellerBankAccount.getDefault(offer.seller_id);
+      } catch (error) {
+        console.log('Seller has no bank account configured:', error.message);
+      }
+
+      const provisionalAmount = estimatedTotal * 0.85;
+      
+      // Calculate due_date based on payment_term
+      // For non-contado terms, calculate from negotiation date
+      let dueDate = new Date(negotiationDate);
+      const paymentTerm = offer.payment_term || 'contado';
+      
+      if (paymentTerm !== 'contado') {
+        // Extract days from payment_term (e.g., '30_dias' -> 30)
+        const daysMatch = paymentTerm.match(/(\d+)_dias/);
+        if (daysMatch) {
+          const days = parseInt(daysMatch[1]);
+          dueDate.setDate(dueDate.getDate() + days);
+        }
+      }
+      // For contado, due_date will be updated when buyer confirms weight
+      
+      const provisionalPaymentOrder = await PaymentOrder.create({
+        transaction_id: transaction.id,
+        buyer_id: offer.buyer_id,
+        seller_id: offer.seller_id,
+        amount: provisionalAmount,
+        order_type: 'provisional',
+        payment_term: paymentTerm,
+        payment_method: offer.payment_method || 'transferencia',
+        payment_method_id: offer.payment_method_id || null,
+        seller_bank_account_id: sellerBankAccount ? sellerBankAccount.id : null,
+        platform_commission: 0,
+        bank_commission: 0,
+        seller_net_amount: provisionalAmount
+      });
+
+      // Update payment order with negotiation_date and due_date
+      await pool.query(
+        'UPDATE payment_orders SET negotiation_date = $1, due_date = $2 WHERE id = $3',
+        [negotiationDate, paymentTerm === 'contado' ? null : dueDate, provisionalPaymentOrder.id]
+      );
+
+      // Notify bank about provisional payment order
+      if (offer.payment_method_id) {
+        const paymentMethodResult = await pool.query(
+          'SELECT bank_id FROM payment_methods WHERE id = $1',
+          [offer.payment_method_id]
+        );
+        
+        if (paymentMethodResult.rows.length > 0 && paymentMethodResult.rows[0].bank_id) {
+          const bankId = paymentMethodResult.rows[0].bank_id;
+          const buyerResult = await pool.query('SELECT name FROM users WHERE id = $1', [offer.buyer_id]);
+          const buyerName = buyerResult.rows[0]?.name || 'Comprador';
+          
+          // Get bank name for webhook
+          const bankNameResult = await pool.query('SELECT bank_name FROM users WHERE id = $1', [bankId]);
+          const bankName = bankNameResult.rows[0]?.bank_name;
+          
+          // Notify bank
+          await notificationService.notifyProvisionalPaymentOrderReceived(
+            bankId,
+            provisionalPaymentOrder.id,
+            provisionalAmount,
+            buyerName
+          ).catch(err => console.error('Error sending notification:', err));
+          
+          // Send webhook
+          if (bankName) {
+            const webhookService = require('../services/webhookService');
+            webhookService.sendWebhook(bankName, 'payment_order.created', {
+              payment_order_id: provisionalPaymentOrder.id,
+              transaction_id: transaction.id,
+              buyer_id: offer.buyer_id,
+              buyer_name: buyerName,
+              seller_id: offer.seller_id,
+              amount: provisionalAmount,
+              payment_term: offer.payment_term,
+              payment_method: offer.payment_method,
+              order_type: 'provisional',
+              created_at: provisionalPaymentOrder.created_at
+            }).catch(err => console.error('Error sending webhook:', err));
+          }
+        }
+      }
+
+      // Reject all other pending offers for this lote
+      const otherOffersResult = await pool.query(
+        'SELECT id, buyer_id FROM offers WHERE lote_id = $1 AND status = $2 AND id != $3',
+        [offer.lote_id, 'pendiente', offerId]
+      );
+
+      if (otherOffersResult.rows.length > 0) {
+        // Update all other offers to rejected
+        await pool.query(
+          'UPDATE offers SET status = $1, updated_at = NOW() WHERE lote_id = $2 AND status = $3 AND id != $4',
+          ['rechazada', offer.lote_id, 'pendiente', offerId]
+        );
+
+        // Notify each rejected buyer
+        for (const otherOffer of otherOffersResult.rows) {
+          await notificationService.notifyOfferResponse(
+            otherOffer.buyer_id,
+            otherOffer.id,
+            false,
+            sellerName
+          ).catch(err => console.error('Error sending notification to rejected buyer:', err));
+        }
+      }
     }
+
+    // Get seller name for notification
+    const sellerResult = await pool.query('SELECT name FROM users WHERE id = $1', [userId]);
+    const sellerName = sellerResult.rows[0]?.name || 'Vendedor';
+
+    // Notify buyer about offer response
+    await notificationService.notifyOfferResponse(
+      offer.buyer_id,
+      offerId,
+      status === 'aceptada',
+      sellerName
+    ).catch(err => console.error('Error sending notification:', err));
 
     res.json({
       message: `Oferta ${status} exitosamente`,
@@ -221,6 +379,18 @@ exports.createCounterOffer = async (req, res) => {
     // Create counter offer
     const counterOffer = await Offer.createCounterOffer(offerId, parseFloat(counter_price));
 
+    // Get seller name for notification
+    const sellerResult = await pool.query('SELECT name FROM users WHERE id = $1', [userId]);
+    const sellerName = sellerResult.rows[0]?.name || 'Vendedor';
+
+    // Notify buyer about counter offer
+    await notificationService.notifyCounterOfferReceived(
+      offer.buyer_id,
+      counterOffer.id,
+      sellerName,
+      parseFloat(counter_price)
+    ).catch(err => console.error('Error sending notification:', err));
+
     res.status(201).json({
       message: 'Contraoferta creada exitosamente',
       counterOffer
@@ -260,6 +430,10 @@ exports.respondToCounterOffer = async (req, res) => {
       return res.status(403).json({ error: 'No tienes permiso para responder a esta contraoferta' });
     }
 
+    // Get buyer name for notification
+    const buyerResult = await pool.query('SELECT name FROM users WHERE id = $1', [userId]);
+    const buyerName = buyerResult.rows[0]?.name || 'Comprador';
+
     if (accept) {
       // Accept counter offer
       const updatedOffer = await Offer.updateStatus(offerId, 'aceptada');
@@ -279,6 +453,14 @@ exports.respondToCounterOffer = async (req, res) => {
         estimated_total: estimatedTotal
       });
 
+      // Notify seller about counter offer acceptance
+      await notificationService.notifyCounterOfferResponse(
+        counterOffer.seller_id,
+        offerId,
+        true,
+        buyerName
+      ).catch(err => console.error('Error sending notification:', err));
+
       res.json({
         message: 'Contraoferta aceptada exitosamente',
         offer: updatedOffer
@@ -286,6 +468,15 @@ exports.respondToCounterOffer = async (req, res) => {
     } else {
       // Reject counter offer
       const updatedOffer = await Offer.updateStatus(offerId, 'rechazada');
+
+      // Notify seller about counter offer rejection
+      await notificationService.notifyCounterOfferResponse(
+        counterOffer.seller_id,
+        offerId,
+        false,
+        buyerName
+      ).catch(err => console.error('Error sending notification:', err));
+
       res.json({
         message: 'Contraoferta rechazada',
         offer: updatedOffer

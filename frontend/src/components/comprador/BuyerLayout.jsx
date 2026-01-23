@@ -9,7 +9,10 @@ import BuyerSettings from "../../pages/comprador/BuyerSettings";
 import MyPurchases from "../../pages/comprador/MyPurchases";
 import PurchaseRequests from "../../pages/comprador/PurchaseRequests";
 import ConfirmarPeso from "../../pages/comprador/ConfirmarPeso";
+import PaymentMethods from "../../pages/comprador/PaymentMethods";
+import Messages from "../../pages/Messages";
 import NotFound from "../../pages/NotFound";
+import NotificationBell from "../NotificationBell/NotificationBell";
 import "../../styles/admin.css";
 
 export default function BuyerLayout() {
@@ -17,6 +20,10 @@ export default function BuyerLayout() {
     <div className="admin-layout">
       <BuyerSidebar />
       <main className="admin-main">
+        <div className="admin-header">
+          <h1>Panel de Comprador</h1>
+          <NotificationBell />
+        </div>
         <div className="admin-content">
           <Routes>
             <Route path="/" element={<BuyerDashboard />} />
@@ -25,8 +32,10 @@ export default function BuyerLayout() {
             <Route path="/mis-compras" element={<MyPurchases />} />
             <Route path="/solicitudes" element={<PurchaseRequests />} />
             <Route path="/confirmar-peso/:id" element={<ConfirmarPeso />} />
+            <Route path="/mensajes" element={<Messages />} />
             <Route path="/certificaciones" element={<MyCertifications />} />
             <Route path="/certificacion" element={<CertificationForm />} />
+            <Route path="/medios-pago" element={<PaymentMethods />} />
             <Route path="/configuracion" element={<BuyerSettings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

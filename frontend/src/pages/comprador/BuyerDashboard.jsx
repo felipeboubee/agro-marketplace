@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, TrendingUp, FileCheck, DollarSign, Plus, Clock, XCircle, CheckCircle, Eye, Package } from 'lucide-react';
+import { ShoppingCart, TrendingUp, FileCheck, DollarSign, Plus, Clock, XCircle, CheckCircle, Eye, Package, MessageCircle, MapPin } from 'lucide-react';
 import { api } from '../../services/api';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -19,6 +19,7 @@ export default function BuyerDashboard() {
   });
   const [recentOffers, setRecentOffers] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
+  const [recentLotesInProvince, setRecentLotesInProvince] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const loadDashboardData = async () => {
@@ -39,6 +40,19 @@ export default function BuyerDashboard() {
       
       // Get last 5 transactions
       setRecentTransactions((transactionsData || []).slice(0, 5));
+
+      // Get recent lotes in user's province
+      if (user.province) {
+        try {
+          const token = localStorage.getItem('token');
+          const lotesData = await api.get(`/lotes/recent/by-province?province=${encodeURIComponent(user.province)}&limit=5`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setRecentLotesInProvince(lotesData);
+        } catch (error) {
+          console.error('Error loading recent lotes:', error);
+        }
+      }
     } catch (error) {
       console.error('Error loading buyer dashboard:', error);
     } finally {
@@ -181,6 +195,12 @@ export default function BuyerDashboard() {
             <ShoppingCart size={32} />
             <h3>Explorar Lotes</h3>
             <p>Ver lotes disponibles para compra</p>
+          </Link>
+
+          <Link to="/comprador/mensajes" className="action-card">
+            <MessageCircle size={32} />
+            <h3>Mensajes</h3>
+            <p>Chat con vendedores</p>
           </Link>
 
           <Link to="/comprador/certificaciones" className="action-card">
@@ -352,6 +372,63 @@ export default function BuyerDashboard() {
           </div>
         </div>
       )}
+
+      {/* Recent Lotes in Province Section */}
+      {user.province && recentLotesInProvince.length > 0 && (
+        <div className="recent-section" style={{ marginTop: '48px' }}>
+          <div className="section-header">
+            <h2>
+              <MapPin size={24} />
+              Lotes Recientes en {user.province}
+            </h2>
+            <Link to={`/comprador/lotes?province=${encodeURIComponent(user.province)}`} className="btn btn-outline btn-sm">
+              Ver todos
+            </Link>
+          </div>
+          <div className="lotes-grid">
+            {recentLotesInProvince.map((lote) => (
+              <div key={lote.id} className="lote-card">
+                <div className="lote-card-header">
+                  <h3>{lote.animal_type} - {lote.breed}</h3>
+                  <span className="lote-badge">{lote.total_count} animales</span>
+                </div>
+                <div className="lote-card-body">
+                  <div className="lote-detail">
+                    <span className="label">Peso Promedio:</span>
+                    <span className="value">{lote.average_weight} kg</span>
+                  </div>
+                  <div className="lote-detail">
+                    <span className="label">Precio Base:</span>
+                    <span className="value price-cell">{formatPrice(lote.base_price)}/kg</span>
+                  </div>
+                  <div className="lote-detail">
+                    <span className="label">Ubicación:</span>
+                    <span className="value">{lote.location}</span>
+                  </div>
+                  <div className="lote-detail">
+                    <span className="label">Vendedor:</span>
+                    <span className="value">{lote.seller_name}</span>
+                  </div>
+                  <div className="lote-detail">
+                    <span className="label">Publicado:</span>
+                    <span className="value">{format(new Date(lote.created_at), 'dd/MM/yyyy', { locale: es })}</span>
+                  </div>
+                </div>
+                <div className="lote-card-footer">
+                  <Link 
+                    to={`/comprador/lote/${lote.id}`}
+                    className="btn btn-primary btn-sm"
+                  >
+                    <Eye size={16} />
+                    Ver Detalles
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

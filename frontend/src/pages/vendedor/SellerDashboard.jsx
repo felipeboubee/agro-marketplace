@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../services/api";
-import { ShoppingCart, TrendingUp, AlertCircle, Plus } from "lucide-react";
+import { ShoppingCart, TrendingUp, AlertCircle, Plus, MessageCircle } from "lucide-react";
 import { formatPrice } from "../../utils/formatters";
 import "../../styles/dashboard.css";
 
@@ -58,6 +58,13 @@ export default function SellerDashboard() {
       icon: <AlertCircle className="stat-icon" />,
       color: "orange",
       link: "/vendedor/mis-lotes"
+    },
+    {
+      title: "Mensajes",
+      value: "Chat",
+      icon: <MessageCircle className="stat-icon" />,
+      color: "purple",
+      link: "/vendedor/mensajes"
     }
   ];
 

@@ -1,6 +1,28 @@
 const pool = require('../config/database');
 
 const PaymentOrder = {
+  // Get bank_id from payment method
+  async getBankFromPaymentMethod(paymentMethodId) {
+    if (!paymentMethodId) {
+      // Si no hay payment_method_id, asignar un banco aleatorio
+      const query = `
+        SELECT id FROM users 
+        WHERE user_type = 'banco' 
+        ORDER BY RANDOM() 
+        LIMIT 1
+      `;
+      const result = await pool.query(query);
+      return result.rows[0]?.id || null;
+    }
+
+    const query = `
+      SELECT bank_id FROM payment_methods 
+      WHERE id = $1
+    `;
+    const result = await pool.query(query, [paymentMethodId]);
+    return result.rows[0]?.bank_id || null;
+  },
+
   // Create a new payment order
   async create(orderData) {
     const {
@@ -10,19 +32,24 @@ const PaymentOrder = {
       amount,
       payment_term,
       payment_method,
+      payment_method_id,
+      seller_bank_account_id,
       platform_commission,
       bank_commission,
       seller_net_amount
     } = orderData;
 
+    // Obtener el banco del método de pago del comprador
+    const bank_id = orderData.bank_id || await this.getBankFromPaymentMethod(payment_method_id);
+
     const query = `
       INSERT INTO payment_orders (
         transaction_id, buyer_id, seller_id, amount,
-        payment_term, payment_method,
+        payment_term, payment_method, payment_method_id, seller_bank_account_id,
         platform_commission, bank_commission, seller_net_amount,
-        status
+        bank_id, status
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending')
       RETURNING *
     `;
 
@@ -33,9 +60,12 @@ const PaymentOrder = {
       amount,
       payment_term,
       payment_method,
+      payment_method_id,
+      seller_bank_account_id,
       platform_commission,
       bank_commission,
-      seller_net_amount
+      seller_net_amount,
+      bank_id
     ]);
 
     return result.rows[0];

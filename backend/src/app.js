@@ -14,6 +14,11 @@ const favoriteRoutes = require('./routes/favoriteRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const paymentOrderRoutes = require('./routes/paymentOrderRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
+const sellerBankAccountRoutes = require('./routes/sellerBankAccountRoutes');
+const bankIntegrationRoutes = require('./routes/bankIntegrationRoutes');
+const bankApiRoutes = require('./routes/bankApiRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const initAdminTables = require('../scripts/initAdminTables');
 const requestLogger = require('./middleware/requestLogger');
 
@@ -47,6 +52,11 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/payment-orders', paymentOrderRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/payment-methods', paymentMethodRoutes);
+app.use('/api/seller-bank-accounts', sellerBankAccountRoutes);
+app.use('/api/bank-integration', bankIntegrationRoutes);
+app.use('/api/bank', bankApiRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use(requestLogger);
 
 // Ruta de prueba

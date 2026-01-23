@@ -415,6 +415,158 @@ exports.getDetailedActivity = async (req, res) => {
       unionParts.push(lotesQuery);
     }
     
+    // Query para transacciones
+    let transactionsWhereConditions = [];
+    let transParamIndex = 1;
+    
+    if (user_id) {
+      transactionsWhereConditions.push(`(t.buyer_id = $${transParamIndex} OR t.seller_id = $${transParamIndex})`);
+      transParamIndex++;
+    }
+    
+    if (start_date) {
+      transactionsWhereConditions.push(`t.created_at >= $${transParamIndex}`);
+      transParamIndex++;
+    }
+    
+    if (end_date) {
+      transactionsWhereConditions.push(`t.created_at <= $${transParamIndex}`);
+      transParamIndex++;
+    }
+    
+    const transWhereClause = transactionsWhereConditions.length > 0 ? 'WHERE ' + transactionsWhereConditions.join(' AND ') : '';
+    
+    // Transacciones desde perspectiva del comprador
+    const transactionsQuery = `
+      SELECT 
+        t.id,
+        t.buyer_id as user_id,
+        u.name as user_name,
+        u.email as user_email,
+        t.created_at,
+        t.status,
+        '' as bank_name,
+        'transaction_created' as activity_type,
+        'Transacción creada: ' || l.animal_type || ' - ' || COALESCE(t.total_count::text, 'N/A') || ' cabezas' as description
+      FROM transactions t
+      LEFT JOIN users u ON u.id = t.buyer_id
+      LEFT JOIN lotes l ON l.id = t.lote_id
+      ${transWhereClause}
+    `;
+    
+    // Transacciones desde perspectiva del vendedor
+    const transactionsSellerQuery = `
+      SELECT 
+        t.id,
+        t.seller_id as user_id,
+        u.name as user_name,
+        u.email as user_email,
+        t.created_at,
+        t.status,
+        '' as bank_name,
+        'transaction_created' as activity_type,
+        'Venta acordada: ' || l.animal_type || ' - ' || COALESCE(t.total_count::text, 'N/A') || ' cabezas' as description
+      FROM transactions t
+      LEFT JOIN users u ON u.id = t.seller_id
+      LEFT JOIN lotes l ON l.id = t.lote_id
+      ${transWhereClause.replace(/t\.buyer_id/g, 't.seller_id')}
+    `;
+    
+    if (!activity_type || activity_type === 'transaction_created') {
+      unionParts.push(transactionsQuery);
+      unionParts.push(transactionsSellerQuery);
+    }
+    
+    // Query para ofertas
+    let offersWhereConditions = [];
+    let offersParamIndex = 1;
+    
+    if (user_id) {
+      offersWhereConditions.push(`o.buyer_id = $${offersParamIndex}`);
+      offersParamIndex++;
+    }
+    
+    if (start_date) {
+      offersWhereConditions.push(`o.created_at >= $${offersParamIndex}`);
+      offersParamIndex++;
+    }
+    
+    if (end_date) {
+      offersWhereConditions.push(`o.created_at <= $${offersParamIndex}`);
+      offersParamIndex++;
+    }
+    
+    const offersWhereClause = offersWhereConditions.length > 0 ? 'WHERE ' + offersWhereConditions.join(' AND ') : '';
+    
+    // Ofertas desde perspectiva del comprador
+    const offersQuery = `
+      SELECT 
+        o.id,
+        o.buyer_id as user_id,
+        u.name as user_name,
+        u.email as user_email,
+        o.created_at,
+        o.status,
+        '' as bank_name,
+        CASE 
+          WHEN o.status = 'accepted' THEN 'offer_accepted'
+          WHEN o.status = 'rejected' THEN 'offer_rejected'
+          ELSE 'offer_created'
+        END as activity_type,
+        'Oferta ' || o.status || ' para lote: ' || l.animal_type as description
+      FROM offers o
+      LEFT JOIN users u ON u.id = o.buyer_id
+      LEFT JOIN lotes l ON l.id = o.lote_id
+      ${offersWhereClause}
+    `;
+    
+    // Ofertas recibidas desde perspectiva del vendedor
+    let offersSellerWhereConditions = [];
+    let offersSellerParamIndex = 1;
+    
+    if (user_id) {
+      offersSellerWhereConditions.push(`l.seller_id = $${offersSellerParamIndex}`);
+      offersSellerParamIndex++;
+    }
+    
+    if (start_date) {
+      offersSellerWhereConditions.push(`o.created_at >= $${offersSellerParamIndex}`);
+      offersSellerParamIndex++;
+    }
+    
+    if (end_date) {
+      offersSellerWhereConditions.push(`o.created_at <= $${offersSellerParamIndex}`);
+      offersSellerParamIndex++;
+    }
+    
+    const offersSellerWhereClause = offersSellerWhereConditions.length > 0 ? 'WHERE ' + offersSellerWhereConditions.join(' AND ') : '';
+    
+    const offersSellerQuery = `
+      SELECT 
+        o.id,
+        l.seller_id as user_id,
+        u.name as user_name,
+        u.email as user_email,
+        o.created_at,
+        o.status,
+        '' as bank_name,
+        CASE 
+          WHEN o.status = 'accepted' THEN 'offer_accepted'
+          WHEN o.status = 'rejected' THEN 'offer_rejected'
+          ELSE 'offer_created'
+        END as activity_type,
+        'Oferta recibida ' || o.status || ' en lote: ' || l.animal_type as description
+      FROM offers o
+      LEFT JOIN lotes l ON l.id = o.lote_id
+      LEFT JOIN users u ON u.id = l.seller_id
+      ${offersSellerWhereClause}
+    `;
+    
+    if (!activity_type || ['offer_created', 'offer_accepted', 'offer_rejected'].includes(activity_type)) {
+      unionParts.push(offersQuery);
+      unionParts.push(offersSellerQuery);
+    }
+    
     if (unionParts.length === 0) {
       // No hay queries que coincidan con el filtro
       return res.json({
@@ -432,7 +584,11 @@ exports.getDetailedActivity = async (req, res) => {
             'certification_aprobado',
             'certification_rechazado',
             'certification_mas_datos',
-            'lote_publicado'
+            'lote_publicado',
+            'transaction_created',
+            'offer_created',
+            'offer_accepted',
+            'offer_rejected'
           ]
         }
       });
@@ -486,6 +642,18 @@ exports.getDetailedActivity = async (req, res) => {
         case 'lote_publicado':
           prefix = 'L';
           break;
+        case 'transaction_created':
+          prefix = 'T';
+          break;
+        case 'offer_created':
+          prefix = 'O';
+          break;
+        case 'offer_accepted':
+          prefix = 'OA';
+          break;
+        case 'offer_rejected':
+          prefix = 'OR';
+          break;
       }
       
       return {
@@ -501,7 +669,11 @@ exports.getDetailedActivity = async (req, res) => {
       'certification_aprobado',
       'certification_rechazado',
       'certification_mas_datos',
-      'lote_publicado'
+      'lote_publicado',
+      'transaction_created',
+      'offer_created',
+      'offer_accepted',
+      'offer_rejected'
     ];
 
     res.json({
@@ -746,5 +918,160 @@ exports.getUserActivity = async (req, res) => {
   } catch (error) {
     console.error('Error fetching user activity:', error);
     res.status(500).json({ error: 'Error al obtener actividad del usuario', details: error.message });
+  }
+};
+
+// CRUD operations for tables
+const ALLOWED_TABLES = [
+  'users', 'lotes', 'offers', 'transactions', 'payment_methods', 
+  'payment_orders', 'certifications', 'seller_bank_accounts', 
+  'messages', 'questions', 'answers', 'favorites', 'notifications', 
+  'system_settings'
+];
+
+// Get all data from a table
+exports.getTableData = async (req, res) => {
+  try {
+    const { tableName } = req.params;
+    
+    if (!ALLOWED_TABLES.includes(tableName)) {
+      return res.status(400).json({ error: 'Tabla no permitida' });
+    }
+
+    const result = await pool.query(`SELECT * FROM ${tableName} ORDER BY id ASC`);
+    res.json({ data: result.rows });
+  } catch (error) {
+    console.error(`Error fetching data from ${req.params.tableName}:`, error);
+    res.status(500).json({ error: 'Error al obtener datos', details: error.message });
+  }
+};
+
+// Create a new record
+exports.createRecord = async (req, res) => {
+  try {
+    const { tableName } = req.params;
+    const data = req.body;
+    
+    if (!ALLOWED_TABLES.includes(tableName)) {
+      return res.status(400).json({ error: 'Tabla no permitida' });
+    }
+
+    // Get table columns (excluding id and timestamp fields that auto-generate)
+    const columnsResult = await pool.query(`
+      SELECT column_name, data_type, column_default
+      FROM information_schema.columns 
+      WHERE table_name = $1 AND table_schema = 'public'
+      ORDER BY ordinal_position
+    `, [tableName]);
+
+    const columns = columnsResult.rows
+      .filter(col => 
+        col.column_name !== 'id' && 
+        !col.column_default?.includes('nextval') &&
+        data[col.column_name] !== undefined
+      )
+      .map(col => col.column_name);
+
+    const values = columns.map(col => data[col]);
+    const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+    
+    const query = `
+      INSERT INTO ${tableName} (${columns.join(', ')})
+      VALUES (${placeholders})
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, values);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error(`Error creating record in ${req.params.tableName}:`, error);
+    res.status(500).json({ error: 'Error al crear registro', details: error.message });
+  }
+};
+
+// Update a record
+exports.updateRecord = async (req, res) => {
+  try {
+    const { tableName, id } = req.params;
+    const data = req.body;
+    
+    if (!ALLOWED_TABLES.includes(tableName)) {
+      return res.status(400).json({ error: 'Tabla no permitida' });
+    }
+
+    // Remove id and timestamp fields from update
+    const { id: _id, created_at, updated_at, ...updateData } = data;
+
+    const columns = Object.keys(updateData);
+    const values = Object.values(updateData);
+    
+    if (columns.length === 0) {
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
+    }
+
+    const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(', ');
+    
+    const query = `
+      UPDATE ${tableName} 
+      SET ${setClause}
+      WHERE id = $${columns.length + 1}
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [...values, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Registro no encontrado' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(`Error updating record in ${req.params.tableName}:`, error);
+    res.status(500).json({ error: 'Error al actualizar registro', details: error.message });
+  }
+};
+
+// Delete a record
+exports.deleteRecord = async (req, res) => {
+  try {
+    const { tableName, id } = req.params;
+    
+    if (!ALLOWED_TABLES.includes(tableName)) {
+      return res.status(400).json({ error: 'Tabla no permitida' });
+    }
+
+    // Check if table has a 'status' column for soft delete
+    const columnsResult = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = $1 AND column_name = 'status'
+    `, [tableName]);
+
+    let result;
+    // Don't soft delete for tables with status constraints like offers
+    const tablesWithStatusConstraints = ['offers', 'transactions', 'lotes'];
+    
+    if (columnsResult.rows.length > 0 && !tablesWithStatusConstraints.includes(tableName)) {
+      // Soft delete - set status to 'inactive' or 'deleted'
+      result = await pool.query(
+        `UPDATE ${tableName} SET status = 'inactive' WHERE id = $1 RETURNING *`,
+        [id]
+      );
+    } else {
+      // Hard delete
+      result = await pool.query(
+        `DELETE FROM ${tableName} WHERE id = $1 RETURNING *`,
+        [id]
+      );
+    }
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Registro no encontrado' });
+    }
+
+    res.json({ message: 'Registro eliminado exitosamente', data: result.rows[0] });
+  } catch (error) {
+    console.error(`Error deleting record from ${req.params.tableName}:`, error);
+    res.status(500).json({ error: 'Error al eliminar registro', details: error.message });
   }
 };

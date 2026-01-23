@@ -2,6 +2,8 @@ const Transaction = require('../models/Transaction');
 const Offer = require('../models/Offer');
 const PaymentOrder = require('../models/PaymentOrder');
 const Lote = require('../models/Lote');
+const notificationService = require('../services/notificationService');
+const pool = require('../config/database');
 
 const transactionController = {
   // Create transaction after offer is accepted
@@ -130,6 +132,18 @@ const transactionController = {
         balance_ticket_url
       });
 
+      // Get seller name for notification
+      const sellerResult = await pool.query('SELECT name FROM users WHERE id = $1', [req.userId]);
+      const sellerName = sellerResult.rows[0]?.name || 'Vendedor';
+
+      // Notify buyer about weight update
+      await notificationService.notifyWeightUpdated(
+        transaction.buyer_id,
+        id,
+        sellerName,
+        actual_weight
+      ).catch(err => console.error('Error sending notification:', err));
+
       res.json(updatedTransaction);
     } catch (error) {
       console.error('Error updating weight:', error);
@@ -164,24 +178,156 @@ const transactionController = {
         return res.status(404).json({ error: 'Oferta no encontrada' });
       }
 
+      // Get seller's default bank account
+      const SellerBankAccount = require('../models/SellerBankAccount');
+      let sellerBankAccount = null;
+      try {
+        sellerBankAccount = await SellerBankAccount.getDefault(transaction.seller_id);
+      } catch (error) {
+        console.log('Seller has no bank account configured:', error.message);
+      }
+
       // Confirm weight (this calculates commissions and creates payment order)
       const confirmedTransaction = await Transaction.confirmWeight(id);
 
-      // Create payment order with payment terms from offer
+      // Calculate final amount with IVA (10.5%)
+      const baseAmount = parseFloat(confirmedTransaction.actual_weight) * parseFloat(confirmedTransaction.agreed_price_per_kg);
+      const ivaAmount = baseAmount * 0.105;
+      const finalAmountWithIVA = baseAmount + ivaAmount;
+
+      // Create final payment order with IVA
       const paymentOrder = await PaymentOrder.create({
         transaction_id: confirmedTransaction.id,
         buyer_id: confirmedTransaction.buyer_id,
         seller_id: confirmedTransaction.seller_id,
-        amount: confirmedTransaction.final_amount,
+        amount: finalAmountWithIVA,
+        order_type: 'final',
         payment_term: offer.payment_term || 'contado',
         payment_method: offer.payment_method || 'transferencia',
+        payment_method_id: offer.payment_method_id || null,
+        seller_bank_account_id: sellerBankAccount ? sellerBankAccount.id : null,
         platform_commission: confirmedTransaction.platform_commission,
         bank_commission: confirmedTransaction.bank_commission,
-        seller_net_amount: confirmedTransaction.seller_net_amount
+        seller_net_amount: confirmedTransaction.seller_net_amount,
+        iva_amount: ivaAmount,
+        base_amount: baseAmount
       });
+
+      // Get negotiation_date from transaction
+      const transactionDataResult = await pool.query(
+        'SELECT negotiation_date, payment_term FROM transactions WHERE id = $1',
+        [id]
+      );
+      const transactionData = transactionDataResult.rows[0];
+      const paymentTerm = offer.payment_term || 'contado';
+      
+      // Calculate due_date
+      let dueDate;
+      if (paymentTerm === 'contado') {
+        // For contado, due date is when buyer confirms weight (now)
+        dueDate = new Date();
+      } else {
+        // For other terms, calculate from negotiation_date
+        if (transactionData.negotiation_date) {
+          dueDate = new Date(transactionData.negotiation_date);
+          const daysMatch = paymentTerm.match(/(\\d+)_dias/);
+          if (daysMatch) {
+            const days = parseInt(daysMatch[1]);
+            dueDate.setDate(dueDate.getDate() + days);
+          }
+        }
+      }
+
+      // Update payment order with dates
+      if (dueDate) {
+        await pool.query(
+          'UPDATE payment_orders SET negotiation_date = $1, due_date = $2 WHERE id = $3',
+          [transactionData.negotiation_date, dueDate, paymentOrder.id]
+        );
+      }
+
+      // Also update provisional payment order due_date if it's contado
+      if (paymentTerm === 'contado') {
+        await pool.query(
+          'UPDATE payment_orders SET due_date = $1 WHERE transaction_id = $2 AND order_type = $3',
+          [dueDate, id, 'provisional']
+        );
+      }
+
+      // Get bank from payment method
+      if (offer.payment_method_id) {
+        const paymentMethodResult = await pool.query(
+          'SELECT bank_id FROM payment_methods WHERE id = $1',
+          [offer.payment_method_id]
+        );
+        
+        if (paymentMethodResult.rows.length > 0 && paymentMethodResult.rows[0].bank_id) {
+          const bankId = paymentMethodResult.rows[0].bank_id;
+          
+          // Get buyer name for notification
+          const buyerResult = await pool.query('SELECT name FROM users WHERE id = $1', [confirmedTransaction.buyer_id]);
+          const buyerName = buyerResult.rows[0]?.name || 'Comprador';
+          
+          // Get bank name for webhook
+          const bankNameResult = await pool.query('SELECT bank_name FROM users WHERE id = $1', [bankId]);
+          const bankName = bankNameResult.rows[0]?.bank_name;
+          
+          // This is the final payment order with IVA
+          const isProvisional = false;
+          
+          // Notify bank about final payment order
+          await notificationService.notifyFinalPaymentOrderReceived(
+            bankId,
+            paymentOrder.id,
+            finalAmountWithIVA,
+            buyerName
+          ).catch(err => console.error('Error sending notification:', err));
+          
+          // Continue with existing code
+          if (false) {
+            await notificationService.notifyProvisionalPaymentOrderReceived(
+              bankId,
+              paymentOrder.id,
+              confirmedTransaction.final_amount,
+              buyerName
+            ).catch(err => console.error('Error sending notification:', err));
+          }
+          
+          // Send webhook to bank if configured
+          if (bankName) {
+            const webhookService = require('../services/webhookService');
+            webhookService.sendWebhook(bankName, 'payment_order.created', {
+              payment_order_id: paymentOrder.id,
+              transaction_id: confirmedTransaction.id,
+              buyer_id: confirmedTransaction.buyer_id,
+              buyer_name: buyerName,
+              seller_id: confirmedTransaction.seller_id,
+              amount: finalAmountWithIVA,
+              base_amount: baseAmount,
+              iva_amount: ivaAmount,
+              payment_term: offer.payment_term,
+              payment_method: offer.payment_method,
+              order_type: 'final',
+              created_at: paymentOrder.created_at
+            }).catch(err => console.error('Error sending webhook:', err));
+          }
+        }
+      }
 
       // Update transaction status to payment_processing
       await Transaction.updateStatus(id, 'payment_processing');
+
+      // Get buyer name for notification
+      const buyerResult = await pool.query('SELECT name FROM users WHERE id = $1', [req.userId]);
+      const buyerName = buyerResult.rows[0]?.name || 'Comprador';
+
+      // Notify seller about weight confirmation
+      await notificationService.notifyWeightConfirmed(
+        transaction.seller_id,
+        id,
+        buyerName,
+        confirmedTransaction.actual_weight
+      ).catch(err => console.error('Error sending notification:', err));
 
       res.json({
         transaction: confirmedTransaction,

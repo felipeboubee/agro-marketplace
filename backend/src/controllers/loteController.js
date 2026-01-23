@@ -1,4 +1,5 @@
 const Lote = require('../models/Lote');
+const notificationService = require('../services/notificationService');
 
 const loteController = {
   async createLote(req, res) {
@@ -19,6 +20,13 @@ const loteController = {
       }
 
       const lote = await Lote.create(loteData);
+      
+      // Notificar al vendedor que el lote fue publicado
+      await notificationService.notifyLotePublished(
+        seller_id,
+        lote.id,
+        lote.animal_type
+      ).catch(err => console.error('Error sending notification:', err));
       
       res.status(201).json({
         message: 'Lote creado exitosamente',
@@ -187,6 +195,45 @@ const loteController = {
     } catch (error) {
       console.error('Error deleting lote:', error);
       res.status(500).json({ error: 'Error al eliminar el lote' });
+    }
+  },
+
+  async getRecentLotesByProvince(req, res) {
+    try {
+      const { province } = req.query;
+      const limit = parseInt(req.query.limit) || 5;
+
+      if (!province) {
+        return res.status(400).json({ error: 'Provincia requerida' });
+      }
+
+      const pool = require('../config/database');
+      
+      // Get recent lotes in the same province, excluding those with active transactions
+      const result = await pool.query(`
+        SELECT l.*, u.name as seller_name, u.phone as seller_phone,
+          CASE WHEN EXISTS (
+            SELECT 1 FROM transactions t 
+            WHERE t.lote_id = l.id 
+            AND t.status NOT IN ('completed', 'cancelled')
+          ) THEN true ELSE false END as has_active_transaction
+        FROM lotes l
+        JOIN users u ON l.seller_id = u.id
+        WHERE l.status = 'ofertado'
+        AND l.location ILIKE $1
+        AND NOT EXISTS (
+          SELECT 1 FROM transactions t 
+          WHERE t.lote_id = l.id 
+          AND t.status NOT IN ('completed', 'cancelled')
+        )
+        ORDER BY l.created_at DESC
+        LIMIT $2
+      `, [`%${province}%`, limit]);
+
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Error fetching recent lotes by province:', error);
+      res.status(500).json({ error: 'Error al obtener lotes recientes' });
     }
   }
 };

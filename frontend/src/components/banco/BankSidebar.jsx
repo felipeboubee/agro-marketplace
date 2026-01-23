@@ -4,10 +4,12 @@ import {
   FileCheck,
   Clock,
   DollarSign,
+  Key,
   LogOut,
   Settings,
   Menu,
-  X
+  X,
+  ShieldCheck
 } from "lucide-react";
 import { useState } from "react";
 
@@ -23,9 +25,10 @@ export default function BankSidebar() {
 
   const navItems = [
     { path: "/banco", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
-    { path: "/banco/solicitudes", icon: <FileCheck size={20} />, label: "Solicitudes" },
+    { path: "/banco/certificaciones", icon: <FileCheck size={20} />, label: "Certificaciones" },
     { path: "/banco/ordenes-pago", icon: <DollarSign size={20} />, label: "Órdenes de Pago" },
-    { path: "/banco/aprobadas", icon: <Clock size={20} />, label: "Pendientes" },
+    { path: "/banco/verificaciones", icon: <ShieldCheck size={20} />, label: "Verificaciones" },
+    { path: "/banco/integracion", icon: <Key size={20} />, label: "Integración API" },
     { path: "/banco/configuracion", icon: <Settings size={20} />, label: "Configuración" },
   ];
 
