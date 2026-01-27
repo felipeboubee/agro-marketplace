@@ -206,14 +206,22 @@ const notificationService = {
 
   // ============ UTILITY METHODS ============
 
-  async getUserNotifications(userId, limit = 50) {
-    const result = await pool.query(
-      `SELECT * FROM notifications 
-       WHERE user_id = $1 
-       ORDER BY created_at DESC 
-       LIMIT $2`,
-      [userId, limit]
-    );
+  async getUserNotifications(userId, options = {}) {
+    const limit = options.limit || 50;
+    const offset = options.offset || 0;
+    const unreadOnly = options.unreadOnly || false;
+    
+    let query = `SELECT * FROM notifications WHERE user_id = $1`;
+    const params = [userId];
+    
+    if (unreadOnly) {
+      query += ' AND is_read = false';
+    }
+    
+    query += ' ORDER BY created_at DESC LIMIT $2 OFFSET $3';
+    params.push(limit, offset);
+    
+    const result = await pool.query(query, params);
     return result.rows;
   },
 
@@ -225,10 +233,10 @@ const notificationService = {
     return parseInt(result.rows[0].count);
   },
 
-  async markAsRead(notificationId) {
+  async markAsRead(notificationId, userId) {
     await pool.query(
-      'UPDATE notifications SET is_read = true, read_at = CURRENT_TIMESTAMP WHERE id = $1',
-      [notificationId]
+      'UPDATE notifications SET is_read = true, read_at = CURRENT_TIMESTAMP WHERE id = $1 AND user_id = $2',
+      [notificationId, userId]
     );
   },
 

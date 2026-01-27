@@ -9,7 +9,22 @@ export default function ChatBox({ transactionId, otherUserName, isOpen, onClose 
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
-  const currentUserId = parseInt(localStorage.getItem('userId'));
+  
+  // Get current user ID from localStorage
+  const getCurrentUserId = () => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        return user.id;
+      } catch (e) {
+        console.error('Error parsing user from localStorage:', e);
+      }
+    }
+    return null;
+  };
+  
+  const currentUserId = getCurrentUserId();
 
   useEffect(() => {
     if (isOpen && transactionId) {
@@ -112,13 +127,14 @@ export default function ChatBox({ transactionId, otherUserName, isOpen, onClose 
           ) : (
             <>
               {messages.map((message) => {
-                const isOwnMessage = message.sender_id === currentUserId;
+                // Ensure both IDs are compared as numbers
+                const isOwnMessage = parseInt(message.sender_id) === parseInt(currentUserId);
                 return (
                   <div
                     key={message.id}
-                    className={`chat-message ${isOwnMessage ? 'own-message' : 'other-message'}`}
+                    className={`chat-message ${isOwnMessage ? 'own-message sent' : 'other-message received'}`}
                   >
-                    <div className="message-bubble">
+                    <div className={`message-bubble ${isOwnMessage ? 'sent' : 'received'}`}>
                       <div className="message-text">{message.message_text}</div>
                       <div className="message-time">{formatTime(message.created_at)}</div>
                     </div>

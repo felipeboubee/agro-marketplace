@@ -98,13 +98,16 @@
 .chat-message {
   display: flex;
   margin-bottom: 8px;
+  width: 100%;
 }
 
-.chat-message.own-message {
+.chat-message.own-message,
+.chat-message.sent {
   justify-content: flex-end;
 }
 
-.chat-message.other-message {
+.chat-message.other-message,
+.chat-message.received {
   justify-content: flex-start;
 }
 
@@ -115,17 +118,26 @@
   word-wrap: break-word;
 }
 
+.message-bubble.sent,
 .own-message .message-bubble {
-  background: #2c5f2d;
-  color: white;
+  background: #d4edda !important;
+  color: #000 !important;
   border-bottom-right-radius: 4px;
 }
 
+.message-bubble.received,
 .other-message .message-bubble {
-  background: white;
-  color: #333;
+  background: white !important;
+  color: #000 !important;
   border-bottom-left-radius: 4px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.message-time {
+  font-size: 11px;
+  color: #6c757d !important;
+  margin-top: 4px;
+  text-align: right;
 }
 
 .message-text {

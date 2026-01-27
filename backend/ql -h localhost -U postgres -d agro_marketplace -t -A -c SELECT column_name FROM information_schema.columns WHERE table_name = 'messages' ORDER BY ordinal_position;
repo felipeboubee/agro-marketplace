@@ -1,0 +1,29 @@
+                                         Table "public.messages"
+   Column    |            Type             | Collation | Nullable |               Default                
+-------------+-----------------------------+-----------+----------+--------------------------------------
+ id          | integer                     |           | not null | nextval('messages_id_seq'::regclass)
+ uuid        | uuid                        |           |          | uuid_generate_v4()
+ sender_id   | integer                     |           |          | 
+ receiver_id | integer                     |           |          | 
+ subject     | character varying(255)      |           |          | 
+ body        | text                        |           | not null | 
+ is_read     | boolean                     |           |          | false
+ read_at     | timestamp without time zone |           |          | 
+ parent_id   | integer                     |           |          | 
+ created_at  | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "messages_pkey" PRIMARY KEY, btree (id)
+    "idx_messages_created" btree (created_at)
+    "idx_messages_is_read" btree (is_read)
+    "idx_messages_read" btree (is_read)
+    "idx_messages_receiver" btree (receiver_id)
+    "idx_messages_receiver_id" btree (receiver_id)
+    "idx_messages_sender" btree (sender_id)
+    "idx_messages_sender_id" btree (sender_id)
+Foreign-key constraints:
+    "messages_parent_id_fkey" FOREIGN KEY (parent_id) REFERENCES messages(id) ON DELETE SET NULL
+    "messages_receiver_id_fkey" FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+    "messages_sender_id_fkey" FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "messages" CONSTRAINT "messages_parent_id_fkey" FOREIGN KEY (parent_id) REFERENCES messages(id) ON DELETE SET NULL
+

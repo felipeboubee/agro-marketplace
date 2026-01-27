@@ -53,8 +53,7 @@ const Lote = {
         t.buyer_id,
         u.name as buyer_name
       FROM lotes l
-      LEFT JOIN transactions t ON l.id = t.lote_id 
-        AND t.status NOT IN ('completo', 'cancelado', 'completed')
+      LEFT JOIN transactions t ON l.id = t.lote_id
       LEFT JOIN users u ON t.buyer_id = u.id
       WHERE l.seller_id = $1 
       ORDER BY l.created_at DESC

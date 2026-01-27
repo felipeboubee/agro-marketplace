@@ -120,6 +120,18 @@ const paymentOrderController = {
       // Update transaction status to completed
       await Transaction.updateStatus(order.transaction_id, 'completed');
 
+      // Mark lote as sold when transaction is completed
+      const transactionLoteResult = await pool.query(
+        'SELECT lote_id FROM transactions WHERE id = $1',
+        [order.transaction_id]
+      );
+      if (transactionLoteResult.rows.length > 0 && transactionLoteResult.rows[0].lote_id) {
+        await pool.query(
+          'UPDATE lotes SET status = $1 WHERE id = $2',
+          ['completo', transactionLoteResult.rows[0].lote_id]
+        );
+      }
+
       // Get transaction details for notifications
       const transactionResult = await pool.query(
         'SELECT buyer_id, seller_id, final_amount FROM transactions WHERE id = $1',

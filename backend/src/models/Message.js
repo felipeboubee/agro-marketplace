@@ -93,10 +93,10 @@ const Message = {
         END as other_user_id,
         (
           SELECT COUNT(*)
-          FROM messages m
-          WHERE m.transaction_id = t.id
-          AND m.receiver_id = $1
-          AND m.is_read = false
+          FROM messages m2
+          WHERE m2.transaction_id = t.id
+          AND m2.receiver_id = $1
+          AND m2.is_read = false
         ) as unread_count,
         (
           SELECT m2.message_text

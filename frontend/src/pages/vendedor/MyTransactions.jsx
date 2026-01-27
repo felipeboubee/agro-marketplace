@@ -42,11 +42,9 @@ export default function MyTransactions() {
       'completed': { label: 'Completada', class: 'badge-success', icon: CheckCircle }
     };
     const badge = badges[status] || { label: status, class: 'badge-default', icon: AlertCircle };
-    const Icon = badge.icon;
     
     return (
       <span className={`status-badge ${badge.class}`}>
-        <Icon size={16} />
         {badge.label}
       </span>
     );
@@ -113,6 +111,7 @@ export default function MyTransactions() {
                   <td>
                     <div className="lote-info">
                       <strong>{transaction.animal_type || 'N/A'}</strong>
+                      <br />
                       <span className="text-muted">{transaction.breed || ''}</span>
                     </div>
                   </td>
@@ -157,7 +156,7 @@ export default function MyTransactions() {
                     {getStatusBadge(transaction.status)}
                   </td>
                   <td>
-                    <div className="action-buttons">
+                    <div className="action-buttons" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                       {transaction.status === 'pending_weight' && (
                         <Link
                           to={`/vendedor/actualizar-peso/${transaction.id}`}

@@ -16,22 +16,34 @@ export default function SellerDashboard() {
 
   async function loadDashboardData() {
     try {
-      const lotes = await api.getSellerLotes();
+      const [lotes, transactions] = await Promise.all([
+        api.getSellerLotes(),
+        api.get('/transactions/seller')
+      ]);
+      
       setRecentLotes(Array.isArray(lotes) ? lotes.slice(0, 5) : []);
 
       // Calcular estadísticas
       const totalLotes = Array.isArray(lotes) ? lotes.length : 0;
       const activeLotes = Array.isArray(lotes) ? lotes.filter(l => l.status === 'ofertado').length : 0;
+      const soldLotes = Array.isArray(lotes) ? lotes.filter(l => l.status === 'completo').length : 0;
+      
+      // Calcular ingresos totales de transacciones completadas
+      const completedTransactions = Array.isArray(transactions) ? transactions.filter(t => t.status === 'completed') : [];
+      const totalEarnings = completedTransactions.reduce((sum, t) => {
+        return sum + (parseFloat(t.seller_net_amount) || 0);
+      }, 0);
       
       setStats({
         totalLotes,
         activeLotes,
-        soldLotes: totalLotes - activeLotes
+        soldLotes,
+        totalEarnings
       });
     } catch (error) {
       console.error("Error loading dashboard:", error);
       setRecentLotes([]);
-      setStats({ totalLotes: 0, activeLotes: 0, soldLotes: 0 });
+      setStats({ totalLotes: 0, activeLotes: 0, soldLotes: 0, totalEarnings: 0 });
     } finally {
       setLoading(false);
     }
@@ -60,11 +72,11 @@ export default function SellerDashboard() {
       link: "/vendedor/mis-lotes"
     },
     {
-      title: "Mensajes",
-      value: "Chat",
-      icon: <MessageCircle className="stat-icon" />,
+      title: "Ingresos Totales",
+      value: stats?.totalEarnings ? formatPrice(stats.totalEarnings) : formatPrice(0),
+      icon: <TrendingUp className="stat-icon" />,
       color: "purple",
-      link: "/vendedor/mensajes"
+      link: "/vendedor/mis-transacciones"
     }
   ];
 

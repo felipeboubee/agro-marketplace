@@ -112,10 +112,24 @@ export default function PaymentMethods() {
     }
 
     try {
-      await api.post('/payment-methods', {
-        payment_type: formType,
-        ...formData
-      });
+      if (formType === 'credit_card') {
+        // Asegurar que los campos de vencimiento estén presentes con el nombre correcto
+        const { expiry_month, expiry_year, ...rest } = formData;
+        const payload = {
+          ...rest,
+          card_expiry_month: expiry_month,
+          card_expiry_year: expiry_year
+        };
+        await api.post('/payment-methods', {
+          payment_type: formType,
+          ...payload
+        });
+      } else {
+        await api.post('/payment-methods', {
+          payment_type: formType,
+          ...formData
+        });
+      }
 
       setShowForm(false);
       setFormData({});
@@ -157,7 +171,16 @@ export default function PaymentMethods() {
             <label>Banco *</label>
             <select
               value={formData.bank_name || ''}
-              onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+              onChange={(e) => {
+                const selectedBank = e.target.value;
+                // Find matching bank_id from availableBanks
+                const matchingBank = availableBanks.find(b => b.name === selectedBank);
+                setFormData({ 
+                  ...formData, 
+                  bank_name: selectedBank,
+                  bank_id: matchingBank ? matchingBank.id : null
+                });
+              }}
               required
             >
               <option value="">Seleccionar banco</option>
@@ -165,25 +188,6 @@ export default function PaymentMethods() {
                 <option key={bank} value={bank}>{bank}</option>
               ))}
             </select>
-          </div>
-
-          <div className="form-group">
-            <label>Banco Procesador *</label>
-            <select
-              value={formData.bank_id || ''}
-              onChange={(e) => setFormData({ ...formData, bank_id: e.target.value })}
-              required
-            >
-              <option value="">Seleccionar banco procesador</option>
-              {availableBanks.map(bank => (
-                <option key={bank.id} value={bank.id}>
-                  {bank.name} ({bank.email})
-                </option>
-              ))}
-            </select>
-            <small className="input-help">
-              Selecciona el banco que procesará tus pagos
-            </small>
           </div>
 
           <div className="form-group">
@@ -280,21 +284,21 @@ export default function PaymentMethods() {
       return (
         <>
           <div className="form-group">
-            <label>Banco Procesador *</label>
+            <label>Banco Emisor *</label>
             <select
               value={formData.bank_id || ''}
               onChange={(e) => setFormData({ ...formData, bank_id: e.target.value })}
               required
             >
-              <option value="">Seleccionar banco procesador</option>
+              <option value="">Seleccionar banco emisor</option>
               {availableBanks.map(bank => (
                 <option key={bank.id} value={bank.id}>
-                  {bank.name} ({bank.email})
+                  {bank.name}
                 </option>
               ))}
             </select>
             <small className="input-help">
-              Selecciona el banco que procesará tus pagos
+              Selecciona el banco emisor de tu tarjeta
             </small>
           </div>
 
@@ -315,10 +319,12 @@ export default function PaymentMethods() {
               value={formData.card_number || ''}
               onChange={(e) => {
                 const value = e.target.value.replace(/\s/g, '');
+                const detectedBrand = detectCardBrand(value);
                 setFormData({ 
                   ...formData, 
                   card_number: value,
-                  card_number_last4: value.slice(-4)
+                  card_number_last4: value.slice(-4),
+                  card_brand: detectedBrand !== 'unknown' ? detectedBrand : formData.card_brand
                 });
                 // Limpiar error al escribir
                 if (validationErrors.card_number) {
@@ -427,6 +433,26 @@ export default function PaymentMethods() {
                 className={validationErrors.expiry ? 'input-error' : ''}
               />
             </div>
+
+            <div className="form-group">
+              <label>Código de Seguridad (CVV) *</label>
+              <input
+                type="text"
+                value={formData.cvv || ''}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  if (value.length <= 4) {
+                    setFormData({ ...formData, cvv: value });
+                  }
+                }}
+                maxLength="4"
+                placeholder="CVV"
+                required
+              />
+              <small className="input-help">
+                3 o 4 dígitos en el reverso de tu tarjeta
+              </small>
+            </div>
           </div>
           {validationErrors.expiry && (
             <div className="validation-error">
@@ -443,7 +469,7 @@ export default function PaymentMethods() {
           )}
 
           <div className="alert alert-info">
-            <strong>Nota de Seguridad:</strong> Solo almacenamos los últimos 4 dígitos de tu tarjeta.
+            <strong>Nota de Seguridad:</strong> Solo almacenamos los últimos 4 dígitos de tu tarjeta y el CVV encriptado.
             La información completa se procesará de forma segura en el momento del pago.
           </div>
         </>
@@ -453,25 +479,6 @@ export default function PaymentMethods() {
     if (formType === 'check') {
       return (
         <>
-          <div className="form-group">
-            <label>Banco Procesador *</label>
-            <select
-              value={formData.bank_id || ''}
-              onChange={(e) => setFormData({ ...formData, bank_id: e.target.value })}
-              required
-            >
-              <option value="">Seleccionar banco procesador</option>
-              {availableBanks.map(bank => (
-                <option key={bank.id} value={bank.id}>
-                  {bank.name} ({bank.email})
-                </option>
-              ))}
-            </select>
-            <small className="input-help">
-              Selecciona el banco que procesará tus pagos
-            </small>
-          </div>
-
           <div className="form-group">
             <label>Nombre del Emisor *</label>
             <input
@@ -486,7 +493,16 @@ export default function PaymentMethods() {
             <label>Banco Emisor *</label>
             <select
               value={formData.check_bank_name || ''}
-              onChange={(e) => setFormData({ ...formData, check_bank_name: e.target.value })}
+              onChange={(e) => {
+                const selectedBank = e.target.value;
+                // Find matching bank_id from availableBanks
+                const matchingBank = availableBanks.find(b => b.name === selectedBank);
+                setFormData({ 
+                  ...formData, 
+                  check_bank_name: selectedBank,
+                  bank_id: matchingBank ? matchingBank.id : null
+                });
+              }}
               required
             >
               <option value="">Seleccionar banco</option>
@@ -690,22 +706,24 @@ export default function PaymentMethods() {
                   <div className="method-type">
                     {getMethodLabel(method.payment_type)}
                   </div>
-                  {method.is_default && (
-                    <span className="default-badge">
-                      <Check size={14} />
-                      Predeterminado
-                    </span>
-                  )}
-                  {method.is_verified ? (
-                    <span className="verified-badge">
-                      <Check size={14} />
-                      Verificado
-                    </span>
-                  ) : (
-                    <span className="pending-badge">
-                      Pendiente
-                    </span>
-                  )}
+                  <div className="method-badges">
+                    {method.is_default && (
+                      <span className="default-badge">
+                        <Check size={14} />
+                        Predeterminado
+                      </span>
+                    )}
+                    {method.is_verified ? (
+                      <span className="verified-badge">
+                        <Check size={14} />
+                        Verificado
+                      </span>
+                    ) : (
+                      <span className="pending-badge">
+                        Pendiente
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {renderMethodDetails(method)}
@@ -715,6 +733,7 @@ export default function PaymentMethods() {
                     <button
                       className="btn btn-sm btn-secondary"
                       onClick={() => handleSetDefault(method.id)}
+                      style={{ minHeight: '40px', padding: '10px 18px', fontSize: '15px' }}
                     >
                       Establecer como predeterminado
                     </button>
@@ -722,6 +741,7 @@ export default function PaymentMethods() {
                   <button
                     className="btn btn-sm btn-danger"
                     onClick={() => handleDelete(method.id)}
+                    style={{ minHeight: '40px', padding: '10px 18px', fontSize: '15px' }}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -764,7 +784,7 @@ export default function PaymentMethods() {
 
         .methods-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
           gap: 20px;
           margin-top: 24px;
         }
@@ -774,6 +794,9 @@ export default function PaymentMethods() {
           border-radius: 12px;
           padding: 20px;
           background: white;
+          min-width: 340px;
+          max-width: 420px;
+          margin: 0 auto;
         }
 
         .method-card.default {
@@ -783,9 +806,18 @@ export default function PaymentMethods() {
 
         .method-header {
           display: flex;
-          align-items: center;
-          gap: 12px;
+          align-items: flex-start;
+          gap: 8px;
           margin-bottom: 16px;
+          flex-wrap: wrap;
+        }
+
+        .method-badges {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          align-items: flex-end;
+          margin-left: auto;
         }
 
         .method-icon {

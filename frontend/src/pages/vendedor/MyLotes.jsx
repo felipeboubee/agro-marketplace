@@ -85,11 +85,9 @@ export default function MyLotes() {
         'completed': { label: 'Completo', class: 'badge-success', icon: CheckCircle },
         'completo': { label: 'Completo', class: 'badge-success', icon: CheckCircle }
       };
-      const badge = badges[lote.transaction_status] || { label: lote.transaction_status, class: 'badge-default', icon: AlertCircle };
-      const Icon = badge.icon;
+      const badge = badges[lote.transaction_status] || { label: lote.transaction_status, class: 'badge-default' };
       return (
         <span className={`status-badge ${badge.class}`}>
-          <Icon size={16} />
           {badge.label}
         </span>
       );
@@ -278,39 +276,25 @@ export default function MyLotes() {
                   <tr key={lote.id}>
                     <td className="id-cell">#{lote.id}</td>
                     <td>
-                      <div className="cell-with-icon">
-                        🐄
-                        <div>
-                          <div className="cell-primary">{lote.animal_type}</div>
-                          <div className="cell-secondary">{lote.breed}</div>
-                        </div>
+                      <div>
+                        <div className="cell-primary">{lote.animal_type}</div>
+                        <div className="cell-secondary">{lote.breed}</div>
                       </div>
                     </td>
                     <td>
-                      <div className="cell-with-icon">
-                        <MapPin size={16} />
-                        {lote.location}
-                      </div>
+                      {lote.location}
                     </td>
                     <td className="number-cell">{lote.total_count}</td>
                     <td className="number-cell">{formatWeight(lote.average_weight)}</td>
                     <td className="price-cell">
-                      <div className="cell-with-icon">
-                        <DollarSign size={16} />
-                        {formatPrice(lote.base_price)}/kg
-                      </div>
+                      {formatPrice(lote.base_price)}/kg
                     </td>
                     <td>{getStatusBadge(lote)}</td>
-                    <td>                      {lote.buyer_name ? (
-                        <span className="text-muted">{lote.buyer_name}</span>
-                      ) : (
-                        <span className="text-muted">-</span>
-                      )}
+                    <td>
+                      {lote.buyer_name || '-'}
                     </td>
-                    <td>                      <div className="cell-with-icon">
-                        <Calendar size={16} />
-                        {format(new Date(lote.created_at), "dd/MM/yyyy", { locale: es })}
-                      </div>
+                    <td>
+                      {format(new Date(lote.created_at), "dd/MM/yyyy", { locale: es })}
                     </td>
                     <td>
                       <div className="action-buttons">

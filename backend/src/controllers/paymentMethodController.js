@@ -26,9 +26,19 @@ const paymentMethodController = {
           return res.status(400).json({ error: 'Número de tarjeta inválido' });
         }
 
+        // Mapear correctamente los campos de vencimiento
+        if (paymentData.card_expiry_month === undefined && paymentData.expiry_month !== undefined) {
+          paymentData.card_expiry_month = paymentData.expiry_month;
+        }
+        if (paymentData.card_expiry_year === undefined && paymentData.expiry_year !== undefined) {
+          paymentData.card_expiry_year = paymentData.expiry_year;
+        }
+
         // Validar fecha de vencimiento
-        if (paymentData.expiry_month && paymentData.expiry_year) {
-          if (!validateCardExpiry(parseInt(paymentData.expiry_month), parseInt(paymentData.expiry_year))) {
+        const expiryMonth = paymentData.card_expiry_month;
+        const expiryYear = paymentData.card_expiry_year;
+        if (expiryMonth && expiryYear) {
+          if (!validateCardExpiry(parseInt(expiryMonth), parseInt(expiryYear))) {
             return res.status(400).json({ error: 'La tarjeta ha vencido o la fecha es inválida' });
           }
         }
