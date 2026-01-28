@@ -1,3 +1,7 @@
+/* Province select/input padding */
+select#province, input#province {
+  padding: 14px;
+}
 /* Forms Styles */
 
 /* Form Container */

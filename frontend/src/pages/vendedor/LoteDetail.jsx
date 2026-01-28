@@ -18,6 +18,8 @@ export default function LoteDetail() {
   const [photoURLs, setPhotoURLs] = useState([]);
   const [photosToKeep, setPhotosToKeep] = useState([]); // URLs de fotos existentes que se mantienen
   const [newVideoURL, setNewVideoURL] = useState('');
+  const [videoURLs, setVideoURLs] = useState([]); // All video sources (video_url + videos[])
+  const [activeVideo, setActiveVideo] = useState(0);
   const [questions, setQuestions] = useState([]);
   const [answerText, setAnswerText] = useState({});
   const [loadingAnswer, setLoadingAnswer] = useState({});
@@ -57,6 +59,20 @@ export default function LoteDetail() {
           uniformity: response.uniformity || 'uniformidad_media'
         });
         setNewVideoURL(response.video_url || '');
+        // Prepare video URLs array: video_url (if present) + videos[]
+        let videosArr = [];
+        if (response.video_url && response.video_url.trim() !== '') {
+          videosArr.push({ type: 'url', src: response.video_url });
+        }
+        if (Array.isArray(response.videos)) {
+          response.videos.forEach(v => {
+            if (v && v.trim() !== '') {
+              videosArr.push({ type: 'upload', src: v });
+            }
+          });
+        }
+        setVideoURLs(videosArr);
+        setActiveVideo(0);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching lote details:', error);
@@ -411,7 +427,7 @@ export default function LoteDetail() {
           )}
 
           <div className="video-section">
-            <h3>Video del Lote</h3>
+            <h3>Videos del Lote</h3>
             {isEditing ? (
               <div className="video-edit">
                 <label>URL del Video:</label>
@@ -423,15 +439,87 @@ export default function LoteDetail() {
                   className="edit-input"
                 />
                 {newVideoURL && (
-                  <video controls src={newVideoURL} className="video-preview" />
+                  <video controls src={newVideoURL} className="video-preview" style={{ maxWidth: '100%', maxHeight: 240 }} />
                 )}
+                {/* Optionally, add upload for new videos here if editing videos is needed */}
               </div>
-            ) : lote.video_url ? (
-              <video controls src={lote.video_url} />
+            ) : videoURLs.length > 0 ? (
+              <>
+                <div className="main-video" style={{ textAlign: 'center', marginBottom: 12 }}>
+                  {(() => {
+                    const videoObj = videoURLs[activeVideo];
+                    const src = videoObj.type === 'upload' ? `${API_BASE_URL}${videoObj.src}` : videoObj.src;
+                    // Check if it's a YouTube URL (avoid JS regex in JSX)
+                    const ytRegex = new RegExp('(?:youtu.be/|youtube.com/(?:embed/|v/|watch\\?v=|watch\\?.+&v=))([\\w-]{11})');
+                    const ytMatch = src.match(ytRegex);
+                    if (ytMatch) {
+                      // Render YouTube iframe
+                      return (
+                        <iframe
+                          width="480"
+                          height="270"
+                          src={`https://www.youtube.com/embed/${ytMatch[1]}`}
+                          title="YouTube video player"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          style={{ maxWidth: '100%', maxHeight: 360 }}
+                        />
+                      );
+                    } else {
+                      // Render normal video
+                      return (
+                        <video
+                          key={activeVideo}
+                          controls
+                          style={{ maxWidth: '100%', maxHeight: 360 }}
+                          src={src}
+                          type="video/mp4"
+                        />
+                      );
+                    }
+                  })()}
+                </div>
+                <div className="video-thumbnails" style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {videoURLs.map((video, idx) => {
+                    const src = video.type === 'upload' ? `${API_BASE_URL}${video.src}` : video.src;
+                    // YouTube ID extraction (same as main video)
+                    let ytId = null;
+                    try {
+                      const ytRegex = new RegExp('(?:youtu.be/|youtube.com/(?:embed/|v/|watch\\?v=|watch\\?.+&v=))([\\w-]{11})');
+                      const match = src.match(ytRegex);
+                      if (match) ytId = match[1];
+                    } catch {}
+                    return (
+                      <div
+                        key={idx}
+                        className={activeVideo === idx ? 'video-thumb active' : 'video-thumb'}
+                        style={{ border: activeVideo === idx ? '2px solid #007bff' : '1px solid #ccc', borderRadius: 4, padding: 2, cursor: 'pointer', background: '#fff' }}
+                        onClick={() => setActiveVideo(idx)}
+                      >
+                        {ytId ? (
+                          <img
+                            src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
+                            alt="YouTube thumbnail"
+                            style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 2 }}
+                          />
+                        ) : (
+                          <video
+                            src={src}
+                            style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 2 }}
+                            muted
+                            preload="metadata"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             ) : (
               <div className="no-images">
                 <span>🎥</span>
-                <p>Sin video</p>
+                <p>Sin videos</p>
               </div>
             )}
           </div>

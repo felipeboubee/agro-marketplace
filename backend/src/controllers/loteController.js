@@ -15,8 +15,13 @@ const loteController = {
       console.log("Files received:", req.files);
 
       // Procesar archivos subidos
-      if (req.files && req.files.length > 0) {
-        loteData.photos = req.files.map(file => `/uploads/${file.filename}`);
+      if (req.files) {
+        if (req.files['photos']) {
+          loteData.photos = req.files['photos'].map(file => `/uploads/${file.filename}`);
+        }
+        if (req.files['videos']) {
+          loteData.videos = req.files['videos'].map(file => `/uploads/${file.filename}`);
+        }
       }
 
       const lote = await Lote.create(loteData);

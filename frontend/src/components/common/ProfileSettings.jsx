@@ -8,7 +8,9 @@ export default function ProfileSettings({ user, onUpdate }) {
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
-    location: user?.location || '',
+    city: user?.city || '',
+    province: user?.province || '',
+    country: user?.country || 'Argentina',
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -179,16 +181,63 @@ export default function ProfileSettings({ user, onUpdate }) {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="location">Ubicación</label>
-            <input
-              type="text"
-              id="location"
-              name="location"
-              value={formData.location}
-              onChange={handleInputChange}
-              placeholder="Ciudad, Provincia"
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="city">Localidad</label>
+              <input
+                type="text"
+                id="city"
+                name="city"
+                value={formData.city}
+                onChange={handleInputChange}
+                placeholder="Ej: Córdoba Capital"
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="province">Provincia</label>
+              <select
+                id="province"
+                name="province"
+                value={formData.province}
+                onChange={handleInputChange}
+              >
+                <option value="">Seleccionar provincia</option>
+                <option value="Buenos Aires">Buenos Aires</option>
+                <option value="Catamarca">Catamarca</option>
+                <option value="Chaco">Chaco</option>
+                <option value="Chubut">Chubut</option>
+                <option value="Córdoba">Córdoba</option>
+                <option value="Corrientes">Corrientes</option>
+                <option value="Entre Ríos">Entre Ríos</option>
+                <option value="Formosa">Formosa</option>
+                <option value="Jujuy">Jujuy</option>
+                <option value="La Pampa">La Pampa</option>
+                <option value="La Rioja">La Rioja</option>
+                <option value="Mendoza">Mendoza</option>
+                <option value="Misiones">Misiones</option>
+                <option value="Neuquén">Neuquén</option>
+                <option value="Río Negro">Río Negro</option>
+                <option value="Salta">Salta</option>
+                <option value="San Juan">San Juan</option>
+                <option value="San Luis">San Luis</option>
+                <option value="Santa Cruz">Santa Cruz</option>
+                <option value="Santa Fe">Santa Fe</option>
+                <option value="Santiago del Estero">Santiago del Estero</option>
+                <option value="Tierra del Fuego">Tierra del Fuego</option>
+                <option value="Tucumán">Tucumán</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="country">País</label>
+              <input
+                type="text"
+                id="country"
+                name="country"
+                value={formData.country}
+                onChange={handleInputChange}
+                placeholder="Argentina"
+              />
+            </div>
           </div>
 
           <button

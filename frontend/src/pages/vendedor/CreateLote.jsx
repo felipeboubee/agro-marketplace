@@ -11,8 +11,8 @@ const CreateLote = () => {
     localidad: '',
     provincia: '',
     animal_type: 'novillitos',
-    male_count: 0,
-    female_count: 0,
+    male_count: '',
+    female_count: '',
     total_count: 0,
     average_weight: '',
     breed: '',
@@ -21,15 +21,17 @@ const CreateLote = () => {
     uniformity: 'uniformidad_media',
     video_url: '',
     photos: [],
+    videos: [],
     description: ''
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [previewPhotos, setPreviewPhotos] = useState([]);
+  const [previewVideos, setPreviewVideos] = useState([]);
 
   // Calcular total automáticamente
   useEffect(() => {
-    const total = parseInt(formData.male_count) + parseInt(formData.female_count);
+    const total = (parseInt(formData.male_count) || 0) + (parseInt(formData.female_count) || 0);
     setFormData(prev => ({
       ...prev,
       total_count: total
@@ -40,58 +42,75 @@ const CreateLote = () => {
     const { name, value, type } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'number' ? parseFloat(value) || 0 : value
+      [name]: type === 'number' ? value : value
     }));
   };
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
-    const newPhotos = [...formData.photos];
-    const newPreviews = [...previewPhotos];
-
-    files.forEach(file => {
-      // Validar tipo de archivo
-      if (!file.type.startsWith('image/')) {
-        alert('Solo se permiten imágenes');
-        return;
-      }
-
-      // Validar tamaño (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('La imagen no debe superar los 5MB');
-        return;
-      }
-
-      // Agregar a la lista
-      newPhotos.push(file);
-      
-      // Crear preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        newPreviews.push(reader.result);
-        setPreviewPhotos([...newPreviews]);
-      };
-      reader.readAsDataURL(file);
-    });
-
-    setFormData(prev => ({
-      ...prev,
-      photos: newPhotos
-    }));
+    const isPhoto = e.target.name === 'photos';
+    if (isPhoto) {
+      const newPhotos = [...formData.photos];
+      const newPreviews = [...previewPhotos];
+      files.forEach(file => {
+        if (!file.type.startsWith('image/')) {
+          alert('Solo se permiten imágenes');
+          return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          alert('La imagen no debe superar los 5MB');
+          return;
+        }
+        newPhotos.push(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newPreviews.push(reader.result);
+          setPreviewPhotos([...newPreviews]);
+        };
+        reader.readAsDataURL(file);
+      });
+      setFormData(prev => ({ ...prev, photos: newPhotos }));
+    } else {
+      // videos
+      const newVideos = [...formData.videos];
+      const newPreviews = [...previewVideos];
+      files.forEach(file => {
+        if (!file.type.startsWith('video/')) {
+          alert('Solo se permiten videos');
+          return;
+        }
+        if (file.size > 50 * 1024 * 1024) {
+          alert('El video no debe superar los 50MB');
+          return;
+        }
+        newVideos.push(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newPreviews.push(reader.result);
+          setPreviewVideos([...newPreviews]);
+        };
+        reader.readAsDataURL(file);
+      });
+      setFormData(prev => ({ ...prev, videos: newVideos }));
+    }
   };
 
   const removePhoto = (index) => {
     const newPhotos = [...formData.photos];
     const newPreviews = [...previewPhotos];
-    
     newPhotos.splice(index, 1);
     newPreviews.splice(index, 1);
-    
-    setFormData(prev => ({
-      ...prev,
-      photos: newPhotos
-    }));
+    setFormData(prev => ({ ...prev, photos: newPhotos }));
     setPreviewPhotos(newPreviews);
+  };
+
+  const removeVideo = (index) => {
+    const newVideos = [...formData.videos];
+    const newPreviews = [...previewVideos];
+    newVideos.splice(index, 1);
+    newPreviews.splice(index, 1);
+    setFormData(prev => ({ ...prev, videos: newVideos }));
+    setPreviewVideos(newPreviews);
   };
 
   const validateForm = () => {
@@ -128,6 +147,10 @@ const CreateLote = () => {
           formData.photos.forEach(photo => {
             formDataToSend.append('photos', photo);
           });
+        } else if (key === 'videos') {
+          formData.videos.forEach(video => {
+            formDataToSend.append('videos', video);
+          });
         } else {
           formDataToSend.append(key, formData[key]);
         }
@@ -146,12 +169,41 @@ const CreateLote = () => {
   };
 
   const animalTypes = [
-    { value: 'novillitos', label: 'Novillitos' },
-    { value: 'vaquillonas', label: 'Vaquillonas' },
-    { value: 'vacas', label: 'Vacas' },
-    { value: 'toros', label: 'Toros' },
-    { value: 'terneros', label: 'Terneros' }
+    { value: 'ternero', label: 'Ternero/a' },
+    { value: 'vaquillona', label: 'Vaquillona' },
+    { value: 'novillito', label: 'Novillito' },
+    { value: 'novillo', label: 'Novillo' },
+    { value: 'vaca', label: 'Vaca' },
+    { value: 'vaca_prenada', label: 'Vaca Preñada' },
+    { value: 'vaca_descarte', label: 'Vaca Descarte' },
+    { value: 'toro', label: 'Toro' },
+    { value: 'toro_descarte', label: 'Toro Descarte' }
   ];
+
+  // Lógica para bloquear inputs según el tipo de animal
+  const isMaleCountDisabled = () => {
+    switch (formData.animal_type) {
+      case 'vaquillona':
+      case 'vaca':
+      case 'vaca_prenada':
+      case 'vaca_descarte':
+        return true;
+      default:
+        return false;
+    }
+  };
+
+  const isFemaleCountDisabled = () => {
+    switch (formData.animal_type) {
+      case 'novillito':
+      case 'novillo':
+      case 'toro':
+      case 'toro_descarte':
+        return true;
+      default:
+        return false;
+    }
+  };
 
   const feedingTypes = [
     { value: 'engorde', label: 'Engorde a corral' },
@@ -225,13 +277,28 @@ const CreateLote = () => {
               >
                 <option value="">Seleccionar provincia</option>
                 <option value="Buenos Aires">Buenos Aires</option>
+                <option value="Catamarca">Catamarca</option>
+                <option value="Chaco">Chaco</option>
+                <option value="Chubut">Chubut</option>
                 <option value="Córdoba">Córdoba</option>
-                <option value="Entre Ríos">Entre Ríos</option>
-                <option value="La Pampa">La Pampa</option>
-                <option value="Misiones">Misiones</option>
                 <option value="Corrientes">Corrientes</option>
+                <option value="Entre Ríos">Entre Ríos</option>
+                <option value="Formosa">Formosa</option>
+                <option value="Jujuy">Jujuy</option>
+                <option value="La Pampa">La Pampa</option>
+                <option value="La Rioja">La Rioja</option>
+                <option value="Mendoza">Mendoza</option>
+                <option value="Misiones">Misiones</option>
+                <option value="Neuquén">Neuquén</option>
+                <option value="Río Negro">Río Negro</option>
+                <option value="Salta">Salta</option>
+                <option value="San Juan">San Juan</option>
+                <option value="San Luis">San Luis</option>
+                <option value="Santa Cruz">Santa Cruz</option>
                 <option value="Santa Fe">Santa Fe</option>
                 <option value="Santiago del Estero">Santiago del Estero</option>
+                <option value="Tierra del Fuego">Tierra del Fuego</option>
+                <option value="Tucumán">Tucumán</option>
               </select>
             </div>
 
@@ -277,6 +344,7 @@ const CreateLote = () => {
         <div className="form-section">
           <h3 className="section-title">Cantidad y Peso</h3>
           <div className="form-grid">
+
             <div className="form-group">
               <label htmlFor="male_count">Cantidad de Machos</label>
               <input
@@ -286,7 +354,8 @@ const CreateLote = () => {
                 value={formData.male_count}
                 onChange={handleChange}
                 min="0"
-                placeholder="0"
+                placeholder={formData.male_count === '' ? '0' : ''}
+                disabled={isMaleCountDisabled()}
               />
             </div>
 
@@ -299,7 +368,8 @@ const CreateLote = () => {
                 value={formData.female_count}
                 onChange={handleChange}
                 min="0"
-                placeholder="0"
+                placeholder={formData.female_count === '' ? '0' : ''}
+                disabled={isFemaleCountDisabled()}
               />
             </div>
 
@@ -399,7 +469,6 @@ const CreateLote = () => {
         {/* Sección 4: Multimedia */}
         <div className="form-section">
           <h3 className="section-title">Fotos y Videos</h3>
-          
           {/* Upload de Fotos */}
           <div className="form-group">
             <label>Fotos del Lote (Máx. 10)</label>
@@ -419,7 +488,6 @@ const CreateLote = () => {
                 <small>Formatos: JPG, PNG. Máx. 5MB por foto</small>
               </label>
             </div>
-
             {/* Preview de Fotos */}
             {previewPhotos.length > 0 && (
               <div className="photos-preview">
@@ -441,8 +509,47 @@ const CreateLote = () => {
               </div>
             )}
           </div>
-
-          {/* Campo de Video */}
+          {/* Upload de Videos */}
+          <div className="form-group">
+            <label>Videos del Lote (Máx. 2)</label>
+            <div className="file-upload-area">
+              <input
+                type="file"
+                id="videos"
+                name="videos"
+                onChange={handleFileChange}
+                multiple
+                accept="video/*"
+                style={{ display: 'none' }}
+              />
+              <label htmlFor="videos" className="file-upload-label">
+                <div className="upload-icon">🎥</div>
+                <p>Haz clic para subir videos</p>
+                <small>Formatos: MP4, WebM. Máx. 50MB por video</small>
+              </label>
+            </div>
+            {/* Preview de Videos */}
+            {previewVideos.length > 0 && (
+              <div className="photos-preview">
+                <h4>Videos seleccionados ({previewVideos.length})</h4>
+                <div className="preview-grid">
+                  {previewVideos.map((preview, index) => (
+                    <div key={index} className="preview-item">
+                      <video src={preview} controls width="100%" height="100%" />
+                      <button
+                        type="button"
+                        className="remove-photo"
+                        onClick={() => removeVideo(index)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Campo de Video por URL */}
           <div className="form-group">
             <label htmlFor="video_url">URL de Video (opcional)</label>
             <input

@@ -17,7 +17,8 @@ const Lote = {
       feeding_type,
       video_url,
       photos,
-      description
+      description,
+      videos
     } = loteData;
 
     // Mapear campos del frontend a base de datos
@@ -29,16 +30,44 @@ const Lote = {
       INSERT INTO lotes (
         seller_id, location, city, province, animal_type, male_count, female_count,
         total_count, average_weight, breed, base_price, feeding_type,
-        video_url, photos, description, status, created_at
+        video_url, photos, videos, description, status, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
       RETURNING *
     `;
     
+    // Convertir strings vacíos a null para campos numéricos
+    function toIntOrNull(val) {
+      if (val === '' || val === undefined || val === null) return null;
+      return parseInt(val);
+    }
+    function toFloatOrNull(val) {
+      if (val === '' || val === undefined || val === null) return null;
+      return parseFloat(val);
+    }
+    // Para text[] en postgres, debe ser un array de strings o null
+    function toPgArray(arr) {
+      if (!arr || arr.length === 0) return null;
+      return arr;
+    }
     const values = [
-      seller_id, location, city, province, animal_type, male_count, female_count,
-      total_count, average_weight, breed, base_price, feeding_type,
-      video_url, photos && photos.length > 0 ? photos : null, description, 'ofertado'
+      seller_id,
+      location,
+      city,
+      province,
+      animal_type,
+      toIntOrNull(male_count),
+      toIntOrNull(female_count),
+      toIntOrNull(total_count),
+      toFloatOrNull(average_weight),
+      breed,
+      toFloatOrNull(base_price),
+      feeding_type,
+      video_url,
+      toPgArray(photos),
+      toPgArray(videos),
+      description,
+      'ofertado'
     ];
     
     const { rows } = await pool.query(query, values);

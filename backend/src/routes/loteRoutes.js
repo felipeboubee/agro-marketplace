@@ -18,12 +18,14 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB para videos
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
+    } else if (file.mimetype.startsWith('video/')) {
+      cb(null, true);
     } else {
-      cb(new Error('Solo se permiten imágenes'));
+      cb(new Error('Solo se permiten imágenes o videos'));
     }
   }
 });
@@ -34,7 +36,10 @@ const upload = multer({
 router.post('/', 
   auth, 
   roleCheck('vendedor'), 
-  upload.array('photos', 10),
+  upload.fields([
+    { name: 'photos', maxCount: 10 },
+    { name: 'videos', maxCount: 2 }
+  ]),
   loteController.createLote
 );
 
@@ -61,7 +66,10 @@ router.get('/', auth, loteController.getAllLotes);
 // @route   PUT /api/lotes/:id
 // @desc    Update lote
 // @access  Private/Vendedor
-router.put('/:id', auth, roleCheck('vendedor'), upload.array('photos', 10), loteController.updateLote);
+router.put('/:id', auth, roleCheck('vendedor'), upload.fields([
+  { name: 'photos', maxCount: 10 },
+  { name: 'videos', maxCount: 2 }
+]), loteController.updateLote);
 
 // @route   DELETE /api/lotes/:id
 // @desc    Delete lote
